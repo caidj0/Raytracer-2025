@@ -7,7 +7,20 @@ use raytracer::utils::{
     vec3::{Point3, Vec3},
 };
 
+fn hit_sphere(center: &Point3, radius: f64, r: &Ray) -> bool {
+    let oc = *center - *r.origin();
+    let a = r.direction().dot(r.direction());
+    let b = -2.0 * r.direction().dot(&oc);
+    let c = oc.dot(&oc) - radius * radius;
+    let discriminant = b * b - 4.0 * a * c;
+    discriminant >= 0.0
+}
+
 fn ray_color(r: &Ray) -> Color {
+    if hit_sphere(&Point3::new(0.0, 0.0, -1.0), 0.5, r) {
+        return Color::new(1.0, 0.0, 0.0);
+    }
+
     let unit_vec = r.direction().unit_vector();
     let a = 0.5 * (unit_vec.y() + 1.0);
 
@@ -49,7 +62,8 @@ fn main() {
 
     for j in 0..image_height {
         for i in 0..image_width {
-            let pixel_center = pixell00_loc + (i as f64 * pixel_delta_u) + (j as f64 * pixel_delta_v);
+            let pixel_center =
+                pixell00_loc + (i as f64 * pixel_delta_u) + (j as f64 * pixel_delta_v);
             let ray_direction = pixel_center - camera_center;
             let r = Ray::new(camera_center, ray_direction);
 
@@ -66,5 +80,4 @@ fn main() {
         style(path.to_str().unwrap()).yellow()
     );
     img.save(path).expect("Cannot save the image to the file");
-
 }
