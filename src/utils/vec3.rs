@@ -1,0 +1,274 @@
+use std::{
+    fmt::Display,
+    ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub},
+};
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Vec3 {
+    e: [f64; 3],
+}
+
+pub type Point3 = Vec3;
+
+impl Vec3 {
+    pub const fn new(x: f64, y: f64, z: f64) -> Vec3 {
+        Vec3 { e: [x, y, z] }
+    }
+
+    pub fn x(&self) -> f64 {
+        self.e[0]
+    }
+    pub fn y(&self) -> f64 {
+        self.e[1]
+    }
+    pub fn z(&self) -> f64 {
+        self.e[2]
+    }
+
+    pub fn length_squared(&self) -> f64 {
+        self[0] * self[0] + self[1] * self[1] + self[2] * self[2]
+    }
+
+    pub fn length(&self) -> f64 {
+        f64::sqrt(self.length_squared())
+    }
+
+    pub fn dot(&self, rhs: &Vec3) -> f64 {
+        self[0] * rhs[0] + self[1] * rhs[1] + self[2] * rhs[2]
+    }
+
+    pub fn cross(&self, rhs: &Vec3) -> Vec3 {
+        Vec3::new(
+            self[1] * rhs[2] - self[2] * rhs[1],
+            self[2] * rhs[0] - self[0] * rhs[2],
+            self[0] * rhs[1] - self[1] * rhs[0],
+        )
+    }
+
+    pub fn unit_vector(&self) -> Vec3 {
+        self.clone() / self.length()
+    }
+}
+
+impl Add for Vec3 {
+    type Output = Vec3;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Vec3::new(self[0] + rhs[0], self[1] + rhs[1], self[2] + rhs[2])
+    }
+}
+
+impl Sub for Vec3 {
+    type Output = Vec3;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Vec3::new(self[0] - rhs[0], self[1] - rhs[1], self[2] - rhs[2])
+    }
+}
+
+impl Mul for Vec3 {
+    type Output = Vec3;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Vec3::new(self[0] * rhs[0], self[1] * rhs[1], self[2] * rhs[2])
+    }
+}
+
+impl Mul<Vec3> for f64 {
+    type Output = Vec3;
+
+    fn mul(self, rhs: Vec3) -> Self::Output {
+        Vec3::new(self * rhs[0], self * rhs[1], self * rhs[2])
+    }
+}
+
+impl Index<usize> for Vec3 {
+    type Output = f64;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.e[index]
+    }
+}
+
+impl IndexMut<usize> for Vec3 {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.e[index]
+    }
+}
+
+impl AddAssign for Vec3 {
+    fn add_assign(&mut self, rhs: Self) {
+        self[0] += rhs[0];
+        self[1] += rhs[1];
+        self[2] += rhs[2];
+    }
+}
+
+impl Neg for Vec3 {
+    type Output = Vec3;
+
+    fn neg(self) -> Self::Output {
+        Vec3::new(-self[0], -self[1], -self[2])
+    }
+}
+
+impl Mul<f64> for Vec3 {
+    type Output = Vec3;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Vec3::new(self[0] * rhs, self[1] * rhs, self[2] * rhs)
+    }
+}
+
+impl MulAssign<f64> for Vec3 {
+    fn mul_assign(&mut self, rhs: f64) {
+        self[0] *= rhs;
+        self[1] *= rhs;
+        self[2] *= rhs;
+    }
+}
+
+impl DivAssign<f64> for Vec3 {
+    fn div_assign(&mut self, rhs: f64) {
+        *self *= 1.0 / rhs
+    }
+}
+
+impl Div<f64> for Vec3 {
+    type Output = Vec3;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        1.0 / rhs * self
+    }
+}
+
+impl Display for Vec3 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {} {}", self[0], self[1], self[2])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_and_getters() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        assert_eq!(v.x(), 1.0);
+        assert_eq!(v.y(), 2.0);
+        assert_eq!(v.z(), 3.0);
+    }
+
+    #[test]
+    fn test_indexing() {
+        let mut v = Vec3::new(1.0, 2.0, 3.0);
+        assert_eq!(v[0], 1.0);
+        assert_eq!(v[1], 2.0);
+        assert_eq!(v[2], 3.0);
+
+        v[0] = 4.0;
+        v[1] = 5.0;
+        v[2] = 6.0;
+        assert_eq!(v[0], 4.0);
+        assert_eq!(v[1], 5.0);
+        assert_eq!(v[2], 6.0);
+    }
+
+    #[test]
+    fn test_negation() {
+        let v = Vec3::new(1.0, -2.0, 3.0);
+        assert_eq!(-v, Vec3::new(-1.0, 2.0, -3.0));
+    }
+
+    #[test]
+    fn test_add() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 5.0, 6.0);
+        assert_eq!(v1 + v2, Vec3::new(5.0, 7.0, 9.0));
+    }
+
+    #[test]
+    fn test_add_assign() {
+        let mut v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 5.0, 6.0);
+        v1 += v2;
+        assert_eq!(v1, Vec3::new(5.0, 7.0, 9.0));
+    }
+
+    #[test]
+    fn test_sub() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 5.0, 6.0);
+        assert_eq!(v1 - v2, Vec3::new(-3.0, -3.0, -3.0));
+    }
+
+    #[test]
+    fn test_mul_scalar() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        assert_eq!(v.clone() * 2.0, Vec3::new(2.0, 4.0, 6.0));
+        assert_eq!(2.0 * v, Vec3::new(2.0, 4.0, 6.0));
+    }
+
+    #[test]
+    fn test_mul_assign_scalar() {
+        let mut v = Vec3::new(1.0, 2.0, 3.0);
+        v *= 2.0;
+        assert_eq!(v, Vec3::new(2.0, 4.0, 6.0));
+    }
+
+    #[test]
+    fn test_mul_vec() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 5.0, 6.0);
+        assert_eq!(v1 * v2, Vec3::new(4.0, 10.0, 18.0));
+    }
+
+    #[test]
+    fn test_div_scalar() {
+        let v = Vec3::new(2.0, 4.0, 6.0);
+        assert_eq!(v / 2.0, Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_div_assign_scalar() {
+        let mut v = Vec3::new(2.0, 4.0, 6.0);
+        v /= 2.0;
+        assert_eq!(v, Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_length() {
+        let v = Vec3::new(3.0, 4.0, 0.0);
+        assert_eq!(v.length_squared(), 25.0);
+        assert_eq!(v.length(), 5.0);
+    }
+
+    #[test]
+    fn test_dot_product() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 5.0, 6.0);
+        assert_eq!(v1.dot(&v2), 32.0);
+    }
+
+    #[test]
+    fn test_cross_product() {
+        let v1 = Vec3::new(1.0, 2.0, 3.0);
+        let v2 = Vec3::new(4.0, 5.0, 6.0);
+        assert_eq!(v1.cross(&v2), Vec3::new(-3.0, 6.0, -3.0));
+    }
+
+    #[test]
+    fn test_unit_vector() {
+        let v = Vec3::new(0.0, 5.0, 0.0);
+        let unit_v = v.unit_vector();
+        assert_eq!(unit_v, Vec3::new(0.0, 1.0, 0.0));
+        assert!((unit_v.length() - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_display() {
+        let v = Vec3::new(1.1, 2.2, 3.3);
+        assert_eq!(format!("{}", v), "1.1 2.2 3.3");
+    }
+}
