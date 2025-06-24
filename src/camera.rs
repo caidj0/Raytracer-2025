@@ -11,15 +11,33 @@ use crate::{
     },
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Camera {
     pub aspect_ratio: f64,
     pub image_width: u32,
+    pub samples_per_pixel: u32,
     image_height: u32,
     center: Point3,
     pixel00_loc: Point3,
     pixel_delta_u: Vec3,
     pixel_delta_v: Vec3,
+    pixel_sample_scale: f64,
+}
+
+impl Default for Camera {
+    fn default() -> Self {
+        Self {
+            aspect_ratio: 1.0,
+            image_width: 100,
+            samples_per_pixel: 10,
+            image_height: Default::default(),
+            center: Default::default(),
+            pixel00_loc: Default::default(),
+            pixel_delta_u: Default::default(),
+            pixel_delta_v: Default::default(),
+            pixel_sample_scale: Default::default(),
+        }
+    }
 }
 
 impl Camera {
@@ -43,13 +61,8 @@ impl Camera {
 
         for j in 0..self.image_height {
             for i in 0..self.image_width {
-                let pixel_center = self.pixel00_loc
-                    + (i as f64 * self.pixel_delta_u)
-                    + (j as f64 * self.pixel_delta_v);
-                let ray_direction = pixel_center - self.center;
-                let r = Ray::new(self.center, ray_direction);
-
-                let pixel_color = ray_color(&r, world);
+                let pixel_color_sum: Vec3 = (0..self.samples_per_pixel).map(|_| ray_color(&self.get_ray(i, j), world)).sum();
+                let pixel_color = pixel_color_sum * self.pixel_sample_scale;
                 let pixel = img.get_pixel_mut(i, j);
                 *pixel = image::Rgb(pixel_color.to_rgb());
             }
@@ -68,6 +81,8 @@ impl Camera {
             self.image_height
         };
 
+        self.pixel_sample_scale = 1.0 / self.samples_per_pixel as f64;
+
         self.center = Point3::new(0.0, 0.0, 0.0);
 
         let focal_length: f64 = 1.0;
@@ -83,6 +98,21 @@ impl Camera {
         let viewport_upper_left =
             self.center - Vec3::new(0.0, 0.0, focal_length) - viewport_u / 2.0 - viewport_v / 2.0;
         self.pixel00_loc = viewport_upper_left + 0.5 * (self.pixel_delta_u + self.pixel_delta_v);
+    }
+
+    fn get_ray(&self, i: u32, j: u32) -> Ray {
+        let offset = Vec3::new(
+            rand::random::<f64>() - 0.5,
+            rand::random::<f64>() - 0.5,
+            0.0,
+        );
+        let pixel_sample = self.pixel00_loc
+            + ((i as f64 + offset.x()) * self.pixel_delta_u)
+            + ((j as f64 + offset.y()) * self.pixel_delta_v);
+        let ray_origin = self.center;
+        let ray_direction = pixel_sample - ray_origin;
+
+        Ray::new(ray_origin, ray_direction)
     }
 }
 

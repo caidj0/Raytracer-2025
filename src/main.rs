@@ -9,6 +9,7 @@ fn main() {
     let aspect_ratio: f64 = 16.0 / 9.0;
     let image_width: u32 = 400;
     let mut camera = Camera::new(aspect_ratio, image_width);
+    camera.samples_per_pixel = 100;
 
     let mut world: Hittables = Default::default();
     world.add(Box::new(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5)));
