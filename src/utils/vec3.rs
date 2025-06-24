@@ -5,7 +5,7 @@ use std::{
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Vec3 {
-    pub e: [f64; 3],
+    e: [f64; 3],
 }
 
 pub type Point3 = Vec3;
@@ -23,6 +23,10 @@ impl Vec3 {
     }
     pub fn z(&self) -> f64 {
         self.e[2]
+    }
+
+    pub fn e(&self) -> [f64; 3] {
+        self.e
     }
 
     pub fn length_squared(&self) -> f64 {
@@ -52,7 +56,9 @@ impl Vec3 {
 
 impl Default for Vec3 {
     fn default() -> Self {
-        Self { e: Default::default() }
+        Self {
+            e: Default::default(),
+        }
     }
 }
 
@@ -125,7 +131,6 @@ impl Neg for &Vec3 {
         Vec3::new(-self[0], -self[1], -self[2])
     }
 }
-
 
 impl MulAssign<f64> for Vec3 {
     fn mul_assign(&mut self, rhs: f64) {

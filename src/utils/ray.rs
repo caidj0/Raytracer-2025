@@ -8,13 +8,19 @@ pub struct Ray {
 
 impl Default for Ray {
     fn default() -> Self {
-        Self { orig: Default::default(), dir: Default::default() }
+        Self {
+            orig: Default::default(),
+            dir: Default::default(),
+        }
     }
 }
 
 impl Ray {
     pub fn new(origin: Point3, direction: Vec3) -> Ray {
-        Ray { orig: origin, dir: direction }
+        Ray {
+            orig: origin,
+            dir: direction,
+        }
     }
 
     pub fn origin(&self) -> &Point3 {
