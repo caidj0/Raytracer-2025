@@ -13,7 +13,7 @@ use raytracer::{
 };
 
 fn ray_color(r: &Ray, world: &dyn Hittable) -> Color {
-    if let Some(t) = world.hit(r, 0.0, 1000.0) {
+    if let Some(t) = world.hit(r, &(0.0..1000.0)) {
         return 0.5 * (t.normal + Vec3::new(1.0, 1.0, 1.0));
     }
 
