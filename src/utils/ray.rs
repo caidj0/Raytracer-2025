@@ -13,8 +13,8 @@ impl Default for Ray {
 }
 
 impl Ray {
-    pub fn new(origin: &Point3, direction: &Vec3) -> Ray {
-        Ray { orig: *origin, dir: *direction }
+    pub fn new(origin: Point3, direction: Vec3) -> Ray {
+        Ray { orig: origin, dir: direction }
     }
 
     pub fn origin(&self) -> &Point3 {
@@ -38,7 +38,7 @@ mod tests {
     fn test_new_ray() {
         let origin = Point3::new(1.0, 2.0, 3.0);
         let direction = Vec3::new(4.0, 5.0, 6.0);
-        let r = Ray::new(&origin, &direction);
+        let r = Ray::new(origin, direction);
         assert_eq!(*r.origin(), origin);
         assert_eq!(*r.direction(), direction);
     }
@@ -47,7 +47,7 @@ mod tests {
     fn test_ray_at() {
         let origin = Point3::new(1.0, 2.0, 3.0);
         let direction = Vec3::new(4.0, 5.0, 6.0);
-        let r = Ray::new(&origin, &direction);
+        let r = Ray::new(origin, direction);
         let p = r.at(2.0);
         assert_eq!(p, Point3::new(9.0, 12.0, 15.0));
     }

@@ -5,7 +5,7 @@ use std::{
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Vec3 {
-    e: [f64; 3],
+    pub e: [f64; 3],
 }
 
 pub type Point3 = Vec3;
