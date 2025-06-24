@@ -23,7 +23,7 @@ impl Hittable for Sphere {
     fn hit(
         &self,
         r: &crate::utils::ray::Ray,
-        interval: &Range<f64>
+        interval: &Range<f64>,
     ) -> Option<crate::hit::HitRecord> {
         let oc = self.center - r.origin();
         let a = r.direction().length_squared();

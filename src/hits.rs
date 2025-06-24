@@ -27,7 +27,7 @@ impl Hittable for Hittables {
     fn hit(
         &self,
         r: &crate::utils::ray::Ray,
-        interval: &Range<f64>
+        interval: &Range<f64>,
     ) -> Option<crate::hit::HitRecord> {
         self.objects
             .iter()
