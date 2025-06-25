@@ -1,18 +1,19 @@
 use std::ops::Range;
 
-use crate::utils::{
+use crate::{material::Material, utils::{
     ray::Ray,
     vec3::{Point3, Vec3},
-};
+}};
 
-pub struct HitRecord {
-    pub p: Point3,
+pub struct HitRecord<'a> {
+    pub p: Point3, // 击中位置
     pub normal: Vec3,
-    pub t: f64,
+    pub mat: &'a Box<dyn Material>,
+    pub t: f64, // 射线长度
     pub front_face: bool,
 }
 
-impl HitRecord {
+impl<'a> HitRecord<'a> {
     pub fn set_face_normal(&mut self, r: &Ray, outward_normal: &Vec3) {
         self.front_face = r.direction().dot(outward_normal) < 0.0;
         self.normal = if self.front_face {

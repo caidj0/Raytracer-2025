@@ -125,8 +125,11 @@ fn ray_color(r: &Ray, depth: u32, world: &dyn Hittable) -> Color {
         return Color::BLACK;
     }
     if let Some(rec) = world.hit(r, &(0.001..f64::INFINITY)) {
-        let direction = rec.normal + Vec3::random_unit_vector();
-        return 0.5 * ray_color(&Ray::new(rec.p, direction), depth - 1, world);
+        if let Some((attenuation, scatter)) = rec.mat.scatter(r, &rec) {
+            return attenuation * ray_color(&scatter, depth - 1, world);
+        } else {
+            return Color::BLACK;
+        }
     }
 
     let unit_vec = r.direction().unit_vector();
