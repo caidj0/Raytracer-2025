@@ -1,4 +1,7 @@
-use std::{fmt::Display, ops::{Deref, DerefMut}};
+use std::{
+    fmt::Display,
+    ops::{Deref, DerefMut},
+};
 
 use crate::utils::vec3::Vec3;
 
@@ -20,8 +23,14 @@ impl DerefMut for Color {
 
 impl Display for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let to_255 = |x: f64| -> i32 {(255.999 * x) as i32};
-        write!(f, "{} {} {}", to_255(self[0]), to_255(self[1]), to_255(self[2]))
+        let to_255 = |x: f64| -> i32 { (255.999 * x) as i32 };
+        write!(
+            f,
+            "{} {} {}",
+            to_255(self[0]),
+            to_255(self[1]),
+            to_255(self[2])
+        )
     }
 }
 #[cfg(test)]
