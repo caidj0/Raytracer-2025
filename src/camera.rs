@@ -7,7 +7,7 @@ use crate::{
     utils::{
         color::Color,
         ray::Ray,
-        vec3::{Point3, Vec3},
+        vec3::{Point3, UnitVec3, Vec3},
     },
 };
 
@@ -132,7 +132,7 @@ fn ray_color(r: &Ray, depth: u32, world: &dyn Hittable) -> Color {
         }
     }
 
-    let unit_vec = r.direction().unit_vector();
+    let unit_vec = UnitVec3::from_vec3(r.direction()).unwrap();
     let a = 0.5 * (unit_vec.y() + 1.0);
 
     (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)

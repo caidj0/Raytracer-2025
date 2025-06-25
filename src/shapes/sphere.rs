@@ -3,7 +3,7 @@ use std::ops::Range;
 use crate::{
     hit::{HitRecord, Hittable},
     material::Material,
-    utils::vec3::Point3,
+    utils::vec3::{Point3, UnitVec3},
 };
 
 pub struct Sphere {
@@ -49,16 +49,8 @@ impl Hittable for Sphere {
         }
 
         let p = r.at(root);
-        let normal = (p - self.center) / self.radius;
-        let outward_normal = (p - self.center) / self.radius;
-        let mut hr = HitRecord {
-            p,
-            normal,
-            mat: self.mat.as_ref(),
-            t: root,
-            front_face: false,
-        };
-        hr.set_face_normal(r, &outward_normal);
+        let outward_normal = UnitVec3::from_vec3_raw((p - self.center) / self.radius);
+        let hr = HitRecord::new(p, outward_normal, self.mat.as_ref(), root, r);
         Some(hr)
     }
 }

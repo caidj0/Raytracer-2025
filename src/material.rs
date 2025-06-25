@@ -1,6 +1,6 @@
 use crate::{
     hit::HitRecord,
-    utils::{color::Color, ray::Ray, vec3::Vec3},
+    utils::{color::Color, ray::Ray, vec3::UnitVec3},
 };
 
 pub trait Material {
@@ -19,9 +19,10 @@ impl Lambertian {
 
 impl Material for Lambertian {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
-        let raw_scatter_direction = rec.normal + Vec3::random_unit_vector();
+        let raw_scatter_direction =
+            rec.normal.as_inner() + UnitVec3::random_unit_vector().as_inner();
         let scatter_direction = if raw_scatter_direction.near_zero() {
-            rec.normal
+            rec.normal.into_inner()
         } else {
             raw_scatter_direction
         };
@@ -45,8 +46,9 @@ impl Metal {
 
 impl Material for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
-        let raw_reflected = r_in.direction().reflect(&rec.normal);
-        let reflected = raw_reflected.unit_vector() + (self.fuzz * Vec3::random_unit_vector());
+        let raw_reflected = UnitVec3::from_vec3(r_in.direction())?.reflect(&rec.normal);
+        let reflected = UnitVec3::from_vec3(&raw_reflected)?.into_inner()
+            + (self.fuzz * UnitVec3::random_unit_vector().into_inner());
         Some((self.albedo, Ray::new(rec.p, reflected)))
     }
 }
@@ -68,11 +70,11 @@ impl Material for Dielectric {
         } else {
             self.refraction_index
         };
-        let unit_direction = r_in.direction().unit_vector();
+        let unit_direction = UnitVec3::from_vec3(r_in.direction()).unwrap();
         Some((
             Color::WHITE,
             if let Some(refacted) = unit_direction.refract(&rec.normal, ri) {
-                Ray::new(rec.p, refacted)
+                Ray::new(rec.p, refacted.into_inner())
             } else {
                 Ray::new(rec.p, unit_direction.reflect(&rec.normal))
             },

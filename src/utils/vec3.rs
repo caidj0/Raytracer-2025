@@ -1,7 +1,7 @@
 use std::{
     fmt::Display,
     iter::Sum,
-    ops::{AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, RangeInclusive},
+    ops::{AddAssign, Deref, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, RangeInclusive},
 };
 
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
@@ -32,40 +32,8 @@ impl Vec3 {
         }
     }
 
-    pub fn random_unit_vector() -> Vec3 {
-        loop {
-            let p = Vec3::random_range(-1.0..=1.0);
-            let lensq = p.length_squared();
-            if 1e-160 < lensq && lensq <= 1.0 {
-                return p / lensq.sqrt();
-            }
-        }
-    }
-
-    pub fn random_on_hemisphere(normal: &Vec3) -> Vec3 {
-        let on_unit_sphere = Vec3::random_unit_vector();
-        if on_unit_sphere.dot(normal) > 0.0 {
-            on_unit_sphere
-        } else {
-            -on_unit_sphere
-        }
-    }
-
-    pub fn reflect(&self, normal: &Vec3) -> Vec3 {
-        *self - 2.0 * Vec3::dot(self, normal) * *normal
-    }
-
-    pub fn refract(&self, normal: &Vec3, relative_eta: f64) -> Option<Vec3> {
-        // 要求 self 和 normal 都是单位向量
-
-        let cos_theta = (-self).dot(normal).min(1.0);
-        let out_perp = relative_eta * (self + cos_theta * normal);
-        let out_parallel_length = (1.0 - out_perp.length_squared()).sqrt();
-        if out_parallel_length.is_nan() {
-            return None;
-        }
-        let out_parallel = -out_parallel_length * normal;
-        Some(out_perp + out_parallel)
+    pub fn reflect(&self, normal: &UnitVec3) -> Vec3 {
+        *self - 2.0 * Vec3::dot(self, normal) * *normal.as_inner()
     }
 
     pub fn x(&self) -> f64 {
@@ -105,10 +73,6 @@ impl Vec3 {
             self[2] * rhs[0] - self[0] * rhs[2],
             self[0] * rhs[1] - self[1] * rhs[0],
         )
-    }
-
-    pub fn unit_vector(&self) -> Vec3 {
-        *self / self.length()
     }
 }
 
@@ -264,8 +228,94 @@ impl Sum for Vec3 {
     }
 }
 
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
+pub struct UnitVec3(Vec3);
+
+impl UnitVec3 {
+    pub fn from_vec3_raw(vec: Vec3) -> UnitVec3 {
+        UnitVec3(vec)
+    }
+
+    pub fn from_vec3(vec: &Vec3) -> Option<UnitVec3> {
+        let v = vec / vec.length();
+        if v[0].is_normal() && v[1].is_normal() && v[2].is_normal() {
+            Some(UnitVec3(v))
+        } else {
+            None
+        }
+    }
+
+    pub fn new(x: f64, y: f64, z: f64) -> Option<UnitVec3> {
+        let v = Vec3 { e: [x, y, z] };
+        UnitVec3::from_vec3(&v)
+    }
+
+    pub fn random_unit_vector() -> UnitVec3 {
+        loop {
+            let p = Vec3::random_range(-1.0..=1.0);
+            let lensq = p.length_squared();
+            if 1e-160 < lensq && lensq <= 1.0 {
+                return UnitVec3::from_vec3_raw(p / lensq.sqrt());
+            }
+        }
+    }
+
+    pub fn random_on_hemisphere(normal: &UnitVec3) -> UnitVec3 {
+        let on_unit_sphere = UnitVec3::random_unit_vector();
+        if on_unit_sphere.dot(normal) > 0.0 {
+            on_unit_sphere
+        } else {
+            -on_unit_sphere
+        }
+    }
+
+    pub fn refract(&self, normal: &UnitVec3, relative_eta: f64) -> Option<UnitVec3> {
+        let cos_theta = (-self).dot(normal).min(1.0);
+        let out_perp = relative_eta * (self.as_inner() + cos_theta * normal.as_inner());
+        let out_parallel_length = (1.0 - out_perp.length_squared()).sqrt();
+        if out_parallel_length.is_nan() {
+            return None;
+        }
+        let out_parallel = -out_parallel_length * normal.as_inner();
+        Some(UnitVec3::from_vec3_raw(out_perp + out_parallel))
+    }
+
+    pub fn into_inner(self) -> Vec3 {
+        self.0
+    }
+
+    pub fn as_inner(&self) -> &Vec3 {
+        &self.0
+    }
+}
+
+impl Neg for UnitVec3 {
+    type Output = UnitVec3;
+
+    fn neg(self) -> Self::Output {
+        UnitVec3(-self.0)
+    }
+}
+
+impl Neg for &UnitVec3 {
+    type Output = UnitVec3;
+
+    fn neg(self) -> Self::Output {
+        UnitVec3(-self.0)
+    }
+}
+
+impl Deref for UnitVec3 {
+    type Target = Vec3;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -377,8 +427,8 @@ mod tests {
     #[test]
     fn test_unit_vector() {
         let v = Vec3::new(0.0, 5.0, 0.0);
-        let unit_v = v.unit_vector();
-        assert_eq!(unit_v, Vec3::new(0.0, 1.0, 0.0));
+        let unit_v = UnitVec3::from_vec3(&v).unwrap();
+        assert_eq!(unit_v, UnitVec3::new(0.0, 1.0, 0.0).unwrap());
         assert!((unit_v.length() - 1.0).abs() < f64::EPSILON);
     }
 
