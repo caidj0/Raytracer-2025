@@ -1,14 +1,17 @@
 use std::ops::Range;
 
-use crate::{material::Material, utils::{
-    ray::Ray,
-    vec3::{Point3, Vec3},
-}};
+use crate::{
+    material::Material,
+    utils::{
+        ray::Ray,
+        vec3::{Point3, Vec3},
+    },
+};
 
 pub struct HitRecord<'a> {
     pub p: Point3, // 击中位置
     pub normal: Vec3,
-    pub mat: &'a Box<dyn Material>,
+    pub mat: &'a dyn Material,
     pub t: f64, // 射线长度
     pub front_face: bool,
 }

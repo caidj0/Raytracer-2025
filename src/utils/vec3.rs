@@ -4,7 +4,7 @@ use std::{
     ops::{AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, RangeInclusive},
 };
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct Vec3 {
     e: [f64; 3],
 }
@@ -95,15 +95,7 @@ impl Vec3 {
     }
 
     pub fn unit_vector(&self) -> Vec3 {
-        self.clone() / self.length()
-    }
-}
-
-impl Default for Vec3 {
-    fn default() -> Self {
-        Self {
-            e: Default::default(),
-        }
+        *self / self.length()
     }
 }
 
@@ -317,7 +309,7 @@ mod tests {
     #[test]
     fn test_mul_scalar() {
         let v = Vec3::new(1.0, 2.0, 3.0);
-        assert_eq!(v.clone() * 2.0, Vec3::new(2.0, 4.0, 6.0));
+        assert_eq!(v * 2.0, Vec3::new(2.0, 4.0, 6.0));
         assert_eq!(2.0 * v, Vec3::new(2.0, 4.0, 6.0));
     }
 

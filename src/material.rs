@@ -29,7 +29,6 @@ impl Material for Lambertian {
     }
 }
 
-
 pub struct Metal {
     albedo: Color,
 }
