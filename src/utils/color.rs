@@ -17,4 +17,5 @@ impl Color {
     }
 
     pub const BLACK: Color = Color::new(0.0, 0.0, 0.0);
+    pub const WHITE: Color = Color::new(1.0, 1.0, 1.0);
 }

@@ -50,3 +50,26 @@ impl Material for Metal {
         Some((self.albedo, Ray::new(rec.p, reflected)))
     }
 }
+
+pub struct Dielectric {
+    refraction_index: f64,
+}
+
+impl Dielectric {
+    pub fn new(refraction_index: f64) -> Dielectric {
+        Dielectric { refraction_index }
+    }
+}
+
+impl Material for Dielectric {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
+        let ri = if rec.front_face {
+            1.0 / self.refraction_index
+        } else {
+            self.refraction_index
+        };
+        let unit_direction = r_in.direction().unit_vector();
+        let refacted = unit_direction.refract(&rec.normal, ri);
+        Some((Color::WHITE, Ray::new(rec.p, refacted)))
+    }
+}
