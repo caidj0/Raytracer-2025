@@ -2,7 +2,7 @@ use console::style;
 use raytracer::{camera::Camera, hits::Hittables, shapes::sphere::Sphere, utils::vec3::Point3};
 
 fn main() {
-    let path_string = format!("output/book1/image3.png");
+    let path_string = "output/book1/image12.png".to_string();
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
