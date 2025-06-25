@@ -1,20 +1,17 @@
 use crate::utils::vec3::{Point3, Vec3};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Ray {
     orig: Point3,
     dir: Vec3,
 }
 
-impl Default for Ray {
-    fn default() -> Self {
-        Self { orig: Default::default(), dir: Default::default() }
-    }
-}
-
 impl Ray {
     pub fn new(origin: Point3, direction: Vec3) -> Ray {
-        Ray { orig: origin, dir: direction }
+        Ray {
+            orig: origin,
+            dir: direction,
+        }
     }
 
     pub fn origin(&self) -> &Point3 {
