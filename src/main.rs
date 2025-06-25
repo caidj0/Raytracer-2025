@@ -49,7 +49,8 @@ fn main() {
 
     for j in 0..image_height {
         for i in 0..image_width {
-            let pixel_center = pixell00_loc + (i as f64 * pixel_delta_u) + (j as f64 * pixel_delta_v);
+            let pixel_center =
+                pixell00_loc + (i as f64 * pixel_delta_u) + (j as f64 * pixel_delta_v);
             let ray_direction = pixel_center - camera_center;
             let r = Ray::new(camera_center, ray_direction);
 
@@ -66,5 +67,4 @@ fn main() {
         style(path.to_str().unwrap()).yellow()
     );
     img.save(path).expect("Cannot save the image to the file");
-
 }
