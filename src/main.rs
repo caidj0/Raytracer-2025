@@ -2,14 +2,17 @@ use console::style;
 use raytracer::{camera::Camera, hits::Hittables, shapes::sphere::Sphere, utils::vec3::Point3};
 
 fn main() {
-    let path = std::path::Path::new("output/book1/image2.png");
+    let path_string = format!("output/book1/image3.png");
+    let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
 
     let aspect_ratio: f64 = 16.0 / 9.0;
     let image_width: u32 = 400;
     let mut camera = Camera::new(aspect_ratio, image_width);
+
     camera.samples_per_pixel = 100;
+    camera.max_depth = 50;
 
     let mut world: Hittables = Default::default();
     world.add(Box::new(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5)));
