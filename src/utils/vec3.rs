@@ -55,13 +55,17 @@ impl Vec3 {
         *self - 2.0 * Vec3::dot(self, normal) * *normal
     }
 
-    pub fn refract(&self, normal: &Vec3, relative_eta: f64) -> Vec3 {
+    pub fn refract(&self, normal: &Vec3, relative_eta: f64) -> Option<Vec3> {
         // 要求 self 和 normal 都是单位向量
 
         let cos_theta = (-self).dot(normal).min(1.0);
         let out_perp = relative_eta * (self + cos_theta * normal);
-        let out_parallel = -(1.0 - out_perp.length_squared()).sqrt() * normal;
-        out_perp + out_parallel
+        let out_parallel_length = (1.0 - out_perp.length_squared()).sqrt();
+        if out_parallel_length.is_nan() {
+            return None
+        }
+        let out_parallel = -out_parallel_length * normal;
+        Some(out_perp + out_parallel)
     }
 
     pub fn x(&self) -> f64 {

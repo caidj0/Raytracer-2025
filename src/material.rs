@@ -69,7 +69,13 @@ impl Material for Dielectric {
             self.refraction_index
         };
         let unit_direction = r_in.direction().unit_vector();
-        let refacted = unit_direction.refract(&rec.normal, ri);
-        Some((Color::WHITE, Ray::new(rec.p, refacted)))
+        Some((
+            Color::WHITE,
+            if let Some(refacted) = unit_direction.refract(&rec.normal, ri) {
+                Ray::new(rec.p, refacted)
+            } else {
+                Ray::new(rec.p, unit_direction.reflect(&rec.normal))
+            },
+        ))
     }
 }

@@ -8,7 +8,7 @@ use raytracer::{
 };
 
 fn main() {
-    let path_string = format!("output/book1/{}.png", "image16");
+    let path_string = format!("output/book1/{}.png", "image17");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -24,7 +24,7 @@ fn main() {
 
     let material_ground = Box::new(Lambertian::new(&Color::new(0.8, 0.8, 0.0)));
     let material_center = Box::new(Lambertian::new(&Color::new(0.1, 0.2, 0.5)));
-    let material_left = Box::new(Dielectric::new(1.50));
+    let material_left = Box::new(Dielectric::new(1.0 / 1.33));
     let material_right = Box::new(Metal::new(&Color::new(0.8, 0.6, 0.2), 1.0));
 
     world.add(Box::new(Sphere::new(
