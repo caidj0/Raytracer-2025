@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub struct HitRecord<'a> {
-    pub p: Point3, // 击中位置
+    pub p: Point3,    // 击中位置
     pub normal: Vec3, // 法线，必须为单位矢量
     pub mat: &'a dyn Material,
     pub t: f64, // 射线长度

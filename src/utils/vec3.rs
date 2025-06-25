@@ -62,7 +62,7 @@ impl Vec3 {
         let out_perp = relative_eta * (self + cos_theta * normal);
         let out_parallel_length = (1.0 - out_perp.length_squared()).sqrt();
         if out_parallel_length.is_nan() {
-            return None
+            return None;
         }
         let out_parallel = -out_parallel_length * normal;
         Some(out_perp + out_parallel)
