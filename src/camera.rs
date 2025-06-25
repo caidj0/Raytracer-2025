@@ -61,7 +61,9 @@ impl Camera {
 
         for j in 0..self.image_height {
             for i in 0..self.image_width {
-                let pixel_color_sum: Vec3 = (0..self.samples_per_pixel).map(|_| ray_color(&self.get_ray(i, j), world)).sum();
+                let pixel_color_sum: Vec3 = (0..self.samples_per_pixel)
+                    .map(|_| ray_color(&self.get_ray(i, j), world))
+                    .sum();
                 let pixel_color = pixel_color_sum * self.pixel_sample_scale;
                 let pixel = img.get_pixel_mut(i, j);
                 *pixel = image::Rgb(pixel_color.to_rgb());

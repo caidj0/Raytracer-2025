@@ -13,7 +13,7 @@ pub struct Sphere {
 impl Sphere {
     pub fn new(center: Point3, radius: f64) -> Sphere {
         Sphere {
-            center: center,
+            center,
             radius: if radius > 0.0 { radius } else { 0.0 },
         }
     }
@@ -49,8 +49,8 @@ impl Hittable for Sphere {
         let normal = (p - self.center) / self.radius;
         let outward_normal = (p - self.center) / self.radius;
         let mut hr = HitRecord {
-            p: p,
-            normal: normal,
+            p,
+            normal,
             t: root,
             front_face: false,
         };
