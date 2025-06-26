@@ -238,7 +238,7 @@ impl UnitVec3 {
 
     pub fn from_vec3(vec: &Vec3) -> Option<UnitVec3> {
         let v = vec / vec.length();
-        if v[0].is_normal() && v[1].is_normal() && v[2].is_normal() {
+        if v[0].is_finite() && v[1].is_finite() && v[2].is_finite() {
             Some(UnitVec3(v))
         } else {
             None
