@@ -11,3 +11,7 @@ rand = "0.9.1"
 
 [profile.dev]
 opt-level = 1
+
+[profile.profiling]
+inherits = "release"
+debug = true

@@ -1,12 +1,12 @@
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
-use rand::random;
 
 use crate::{
     hit::Hittable,
     hits::Hittables,
     utils::{
         color::Color,
+        random::Random,
         ray::Ray,
         vec3::{Point3, UnitVec3, Vec3},
     },
@@ -141,11 +141,7 @@ impl Camera {
     }
 
     fn get_ray(&self, i: u32, j: u32) -> Ray {
-        let offset = Vec3::new(
-            rand::random::<f64>() - 0.5,
-            rand::random::<f64>() - 0.5,
-            0.0,
-        );
+        let offset = Vec3::new(Random::f64() - 0.5, Random::f64() - 0.5, 0.0);
         let pixel_sample = self.pixel00_loc
             + ((i as f64 + offset.x()) * self.pixel_delta_u)
             + ((j as f64 + offset.y()) * self.pixel_delta_v);
@@ -155,7 +151,7 @@ impl Camera {
             self.defocus_disk_sample()
         };
         let ray_direction = pixel_sample - ray_origin;
-        let ray_time = random();
+        let ray_time = Random::f64();
 
         Ray::new_with_time(ray_origin, ray_direction, ray_time)
     }

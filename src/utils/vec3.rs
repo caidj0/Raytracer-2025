@@ -2,8 +2,10 @@ use std::{
     f64::consts::PI,
     fmt::Display,
     iter::Sum,
-    ops::{AddAssign, Deref, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, RangeInclusive},
+    ops::{AddAssign, Deref, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Range},
 };
+
+use crate::utils::random::Random;
 
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct Vec3 {
@@ -19,23 +21,23 @@ impl Vec3 {
 
     pub fn random() -> Vec3 {
         Vec3 {
-            e: rand::random::<[f64; 3]>(),
+            e: [Random::f64(), Random::f64(), Random::f64()],
         }
     }
 
-    pub fn random_range(range: RangeInclusive<f64>) -> Vec3 {
+    pub fn random_range(range: Range<f64>) -> Vec3 {
         Vec3 {
             e: [
-                rand::random_range(range.clone()),
-                rand::random_range(range.clone()),
-                rand::random_range(range),
+                Random::random_range(range.clone()),
+                Random::random_range(range.clone()),
+                Random::random_range(range),
             ],
         }
     }
 
     pub fn random_in_unit_disk() -> Vec3 {
-        let theta = rand::random_range(0.0..(2.0 * PI));
-        let r = rand::random::<f64>().sqrt();
+        let theta = Random::random_range(0.0..(2.0 * PI));
+        let r = Random::f64().sqrt();
         Vec3 {
             e: [r * theta.cos(), r * theta.sin(), 0.0],
         }
@@ -263,7 +265,7 @@ impl UnitVec3 {
 
     pub fn random_unit_vector() -> UnitVec3 {
         loop {
-            let p = Vec3::random_range(-1.0..=1.0);
+            let p = Vec3::random_range(-1.0..1.0);
             let lensq = p.length_squared();
             if 1e-160 < lensq && lensq <= 1.0 {
                 return UnitVec3::from_vec3_raw(p / lensq.sqrt());

@@ -1,6 +1,6 @@
 use crate::{
     hit::HitRecord,
-    utils::{color::Color, ray::Ray, vec3::UnitVec3},
+    utils::{color::Color, random::Random, ray::Ray, vec3::UnitVec3},
 };
 
 pub trait Material {
@@ -91,7 +91,7 @@ impl Material for Dielectric {
             Color::WHITE,
             Ray::new_with_time(
                 rec.p,
-                if cannot_refract || Dielectric::reflectance(cos_theta, ri) > rand::random() {
+                if cannot_refract || Dielectric::reflectance(cos_theta, ri) > Random::f64() {
                     unit_direction.reflect(&rec.normal)
                 } else {
                     unit_direction

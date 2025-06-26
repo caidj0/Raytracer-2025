@@ -1,5 +1,4 @@
 use console::style;
-use rand::random_range;
 use raytracer::{
     camera::Camera,
     hits::Hittables,
@@ -7,6 +6,7 @@ use raytracer::{
     shapes::sphere::Sphere,
     utils::{
         color::Color,
+        random::Random,
         vec3::{Point3, Vec3},
     },
 };
@@ -23,18 +23,18 @@ fn main() {
 
     for a in -11..11 {
         for b in -11..11 {
-            let choose_mat: f64 = rand::random();
+            let choose_mat: f64 = Random::f64();
             let center = Point3::new(
-                a as f64 + 0.9 * rand::random::<f64>(),
+                a as f64 + 0.9 * Random::f64(),
                 0.2,
-                b as f64 + 0.9 * rand::random::<f64>(),
+                b as f64 + 0.9 * Random::f64(),
             );
 
             if (center - Point3::new(4.0, 0.2, 0.0)).length() > 0.9 {
                 match choose_mat {
                     ..0.8 => {
                         let albedo = Color::random() * Color::random();
-                        let center2 = center + Vec3::new(0.0, random_range(0.0..0.5), 0.0);
+                        let center2 = center + Vec3::new(0.0, Random::random_range(0.0..0.5), 0.0);
                         let shpere_material = Box::new(Lambertian::new(&albedo));
                         world.add(Box::new(Sphere::new_with_time(
                             center,
@@ -44,8 +44,8 @@ fn main() {
                         )));
                     }
                     ..0.95 => {
-                        let albedo = Color::random_range(0.5..=1.0);
-                        let fuzz: f64 = rand::random_range(0.0..0.5);
+                        let albedo = Color::random_range(0.5..1.0);
+                        let fuzz: f64 = Random::random_range(0.0..0.5);
                         let shpere_material = Box::new(Metal::new(&albedo, fuzz));
                         world.add(Box::new(Sphere::new(center, 0.2, shpere_material)));
                     }
