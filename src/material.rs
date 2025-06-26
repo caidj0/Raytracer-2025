@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     hit::HitRecord,
     texture::{SolidColor, Texture},
@@ -9,17 +11,17 @@ pub trait Material {
 }
 
 pub struct Lambertian {
-    texure: Box<dyn Texture>,
+    texure: Rc<dyn Texture>,
 }
 
 impl Lambertian {
     pub fn new(albedo: Color) -> Lambertian {
         Lambertian {
-            texure: Box::new(SolidColor::new(albedo)),
+            texure: Rc::new(SolidColor::new(albedo)),
         }
     }
 
-    pub fn from_tex(texure: Box<dyn Texture>) -> Lambertian {
+    pub fn from_tex(texure: Rc<dyn Texture>) -> Lambertian {
         Lambertian { texure }
     }
 }

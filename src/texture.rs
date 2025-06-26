@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::utils::{color::Color, vec3::Point3};
 
 pub trait Texture {
@@ -28,15 +30,15 @@ impl Texture for SolidColor {
 
 pub struct CheckerTexture {
     inv_scale: f64,
-    even: Box<dyn Texture>,
-    odd: Box<dyn Texture>,
+    even: Rc<dyn Texture>,
+    odd: Rc<dyn Texture>,
 }
 
 impl CheckerTexture {
     pub fn new(
         scale: f64,
-        even_texture: Box<dyn Texture>,
-        odd_texture: Box<dyn Texture>,
+        even_texture: Rc<dyn Texture>,
+        odd_texture: Rc<dyn Texture>,
     ) -> CheckerTexture {
         CheckerTexture {
             inv_scale: 1.0 / scale,
@@ -48,8 +50,8 @@ impl CheckerTexture {
     pub fn from_colors(scale: f64, even_color: Color, odd_color: Color) -> CheckerTexture {
         CheckerTexture {
             inv_scale: 1.0 / scale,
-            even: Box::new(SolidColor::new(even_color)),
-            odd: Box::new(SolidColor::new(odd_color)),
+            even: Rc::new(SolidColor::new(even_color)),
+            odd: Rc::new(SolidColor::new(odd_color)),
         }
     }
 }

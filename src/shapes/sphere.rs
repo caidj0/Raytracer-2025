@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     aabb::AABB,
     hit::{HitRecord, Hittable},
@@ -12,12 +14,12 @@ use crate::{
 pub struct Sphere {
     center: Ray,
     radius: f64,
-    mat: Box<dyn Material>,
+    mat: Rc<dyn Material>,
     bbox: AABB,
 }
 
 impl Sphere {
-    pub fn new(static_center: Point3, radius: f64, mat: Box<dyn Material>) -> Sphere {
+    pub fn new(static_center: Point3, radius: f64, mat: Rc<dyn Material>) -> Sphere {
         let rvec = Vec3::new(radius, radius, radius);
         Sphere {
             center: Ray::new(static_center, Vec3::ZERO),
@@ -31,7 +33,7 @@ impl Sphere {
         center1: Point3,
         center2: Point3,
         radius: f64,
-        mat: Box<dyn Material>,
+        mat: Rc<dyn Material>,
     ) -> Sphere {
         let rvec = Vec3::new(radius, radius, radius);
         let center = Ray::new(center1, center2 - center1);
