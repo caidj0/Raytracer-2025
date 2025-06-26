@@ -6,6 +6,7 @@ use crate::{
     hits::Hittables,
     utils::{
         color::Color,
+        interval::Interval,
         random::Random,
         ray::Ray,
         vec3::{Point3, UnitVec3, Vec3},
@@ -166,7 +167,7 @@ fn ray_color(r: &Ray, depth: u32, world: &dyn Hittable) -> Color {
     if depth == 0 {
         return Color::BLACK;
     }
-    if let Some(rec) = world.hit(r, &(0.001..f64::INFINITY)) {
+    if let Some(rec) = world.hit(r, &Interval::from_range(0.001..f64::INFINITY)) {
         if let Some((attenuation, scatter)) = rec.mat.scatter(r, &rec) {
             return attenuation * ray_color(&scatter, depth - 1, world);
         } else {

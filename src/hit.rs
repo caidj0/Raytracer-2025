@@ -1,8 +1,8 @@
-use std::ops::Range;
-
 use crate::{
+    aabb::AABB,
     material::Material,
     utils::{
+        interval::Interval,
         ray::Ray,
         vec3::{Point3, UnitVec3},
     },
@@ -36,5 +36,7 @@ impl<'a> HitRecord<'a> {
 }
 
 pub trait Hittable {
-    fn hit(&self, r: &Ray, interval: &Range<f64>) -> Option<HitRecord>;
+    fn hit(&self, r: &Ray, interval: &Interval) -> Option<HitRecord>;
+
+    fn bounding_box(&self) -> &AABB;
 }
