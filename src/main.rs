@@ -2,7 +2,7 @@ use console::style;
 use raytracer::{
     camera::Camera,
     hits::Hittables,
-    material::{Dielectric, Lambertian, Metal},
+    material::{Dielectric, Lambertian, Material, Metal},
     shapes::sphere::Sphere,
     utils::{
         color::Color,
@@ -13,57 +13,78 @@ use raytracer::{
 fn main() {
     let mut world: Hittables = Default::default();
 
-    let material_ground = Box::new(Lambertian::new(&Color::new(0.8, 0.8, 0.0)));
-    let material_center = Box::new(Lambertian::new(&Color::new(0.1, 0.2, 0.5)));
-    let material_left = Box::new(Dielectric::new(1.50));
-    let material_bubble = Box::new(Dielectric::new(1.00 / 1.50));
-    let material_right = Box::new(Metal::new(&Color::new(0.8, 0.6, 0.2), 1.0));
-
+    let ground_material = Box::new(Lambertian::new(&Color::new(0.5, 0.5, 0.5)));
     world.add(Box::new(Sphere::new(
-        Point3::new(0.0, -100.5, -1.0),
-        100.0,
-        material_ground,
-    )));
-    world.add(Box::new(Sphere::new(
-        Point3::new(0.0, 0.0, -1.2),
-        0.5,
-        material_center,
-    )));
-    world.add(Box::new(Sphere::new(
-        Point3::new(-1.0, 0.0, -1.0),
-        0.5,
-        material_left,
-    )));
-    world.add(Box::new(Sphere::new(
-        Point3::new(-1.0, 0.0, -1.0),
-        0.4,
-        material_bubble,
-    )));
-    world.add(Box::new(Sphere::new(
-        Point3::new(1.0, 0.0, -1.0),
-        0.5,
-        material_right,
+        Point3::new(0.0, -1000.0, 0.0),
+        1000.0,
+        ground_material,
     )));
 
-    let aspect_ratio: f64 = 16.0 / 9.0;
-    let image_width: u32 = 400;
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat: f64 = rand::random();
+            let center = Point3::new(
+                a as f64 + 0.9 * rand::random::<f64>(),
+                0.2,
+                b as f64 + 0.9 * rand::random::<f64>(),
+            );
+
+            if (center - Point3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+                let shpere_material: Box<dyn Material> = match choose_mat {
+                    ..0.8 => {
+                        let albedo = Color::random() * Color::random();
+                        Box::new(Lambertian::new(&albedo))
+                    }
+                    ..0.95 => {
+                        let albedo = Color::random_range(0.5..=1.0);
+                        let fuzz: f64 = rand::random_range(0.0..0.5);
+                        Box::new(Metal::new(&albedo, fuzz))
+                    }
+                    _ => Box::new(Dielectric::new(1.5)),
+                };
+                world.add(Box::new(Sphere::new(center, 0.2, shpere_material)));
+            }
+        }
+    }
+
+    let material1 = Box::new(Dielectric::new(1.5));
+    world.add(Box::new(Sphere::new(
+        Point3::new(0.0, 1.0, 0.0),
+        1.0,
+        material1,
+    )));
+
+    let material2 = Box::new(Lambertian::new(&Color::new(0.4, 0.2, 0.1)));
+    world.add(Box::new(Sphere::new(
+        Point3::new(-4.0, 1.0, 0.0),
+        1.0,
+        material2,
+    )));
+
+    let material3 = Box::new(Metal::new(&Color::new(0.7, 0.6, 0.5), 0.0));
+    world.add(Box::new(Sphere::new(
+        Point3::new(4.0, 1.0, 0.0),
+        1.0,
+        material3,
+    )));
+
     let mut camera = Camera::default();
-    camera.aspect_ratio = aspect_ratio;
-    camera.image_width = image_width;
-    camera.samples_per_pixel = 100;
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 1200;
+    camera.samples_per_pixel = 500;
     camera.max_depth = 50;
 
     camera.vertical_fov_in_degrees = 20.0;
-    camera.look_from = Point3::new(-2.0, 2.0, 1.0);
-    camera.look_at = Point3::new(0.0, 0.0, -1.0);
+    camera.look_from = Point3::new(13.0, 2.0, 3.0);
+    camera.look_at = Point3::new(0.0, 0.0, 0.0);
     camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
 
-    camera.defocus_angle_in_degrees = 10.0;
-    camera.focus_distance = 3.4;
+    camera.defocus_angle_in_degrees = 0.6;
+    camera.focus_distance = 10.0;
 
     let img = camera.render(&world);
 
-    let path_string = format!("output/book1/{}.png", "image22");
+    let path_string = format!("output/book1/{}.png", "image23");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
