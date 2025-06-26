@@ -1,19 +1,49 @@
-use std::f64::consts::PI;
-
 use console::style;
 use raytracer::{
     camera::Camera,
     hits::Hittables,
-    material::Lambertian,
+    material::{Dielectric, Lambertian, Metal},
     shapes::sphere::Sphere,
-    utils::{color::Color, vec3::Point3},
+    utils::{
+        color::Color,
+        vec3::{Point3, Vec3},
+    },
 };
 
 fn main() {
-    let path_string = format!("output/book1/{}.png", "image19");
-    let path = std::path::Path::new(&path_string);
-    let prefix = path.parent().unwrap();
-    std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
+    let mut world: Hittables = Default::default();
+
+    let material_ground = Box::new(Lambertian::new(&Color::new(0.8, 0.8, 0.0)));
+    let material_center = Box::new(Lambertian::new(&Color::new(0.1, 0.2, 0.5)));
+    let material_left = Box::new(Dielectric::new(1.50));
+    let material_bubble = Box::new(Dielectric::new(1.00 / 1.50));
+    let material_right = Box::new(Metal::new(&Color::new(0.8, 0.6, 0.2), 1.0));
+
+    world.add(Box::new(Sphere::new(
+        Point3::new(0.0, -100.5, -1.0),
+        100.0,
+        material_ground,
+    )));
+    world.add(Box::new(Sphere::new(
+        Point3::new(0.0, 0.0, -1.2),
+        0.5,
+        material_center,
+    )));
+    world.add(Box::new(Sphere::new(
+        Point3::new(-1.0, 0.0, -1.0),
+        0.5,
+        material_left,
+    )));
+    world.add(Box::new(Sphere::new(
+        Point3::new(-1.0, 0.0, -1.0),
+        0.4,
+        material_bubble,
+    )));
+    world.add(Box::new(Sphere::new(
+        Point3::new(1.0, 0.0, -1.0),
+        0.5,
+        material_right,
+    )));
 
     let aspect_ratio: f64 = 16.0 / 9.0;
     let image_width: u32 = 400;
@@ -23,26 +53,28 @@ fn main() {
     camera.samples_per_pixel = 100;
     camera.max_depth = 50;
     camera.vertical_fov_in_degree = 90.0;
-
-    let mut world: Hittables = Default::default();
-
-    let r = f64::cos(PI / 4.0);
-    let material_left = Box::new(Lambertian::new(&Color::BLUE));
-    let material_right = Box::new(Lambertian::new(&Color::RED));
-
-    world.add(Box::new(Sphere::new(
-        Point3::new(-r, 0.0, -1.0),
-        r,
-        material_left,
-    )));
-    world.add(Box::new(Sphere::new(
-        Point3::new(r, 0.0, -1.0),
-        r,
-        material_right,
-    )));
+    camera.look_from = Point3::new(-2.0, 2.0, 1.0);
+    camera.look_at = Point3::new(0.0, 0.0, -1.0);
+    camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
 
     let img = camera.render(&world);
 
+    let path_string = format!("output/book1/{}.png", "image20");
+    let path = std::path::Path::new(&path_string);
+    let prefix = path.parent().unwrap();
+    std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
+    println!(
+        "Output image as \"{}\"",
+        style(path.to_str().unwrap()).yellow()
+    );
+    img.save(path).expect("Cannot save the image to the file");
+
+    camera.vertical_fov_in_degree = 20.0;
+
+    let img = camera.render(&world);
+
+    let path_string = format!("output/book1/{}.png", "image21");
+    let path = std::path::Path::new(&path_string);
     println!(
         "Output image as \"{}\"",
         style(path.to_str().unwrap()).yellow()

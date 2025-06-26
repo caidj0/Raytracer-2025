@@ -46,8 +46,8 @@ impl Metal {
 
 impl Material for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
-        let raw_reflected = UnitVec3::from_vec3(r_in.direction())?.reflect(&rec.normal);
-        let reflected = UnitVec3::from_vec3(&raw_reflected)?.into_inner()
+        let raw_reflected = UnitVec3::from_vec3(*r_in.direction())?.reflect(&rec.normal);
+        let reflected = UnitVec3::from_vec3(raw_reflected)?.into_inner()
             + (self.fuzz * UnitVec3::random_unit_vector().into_inner());
         Some((self.albedo, Ray::new(rec.p, reflected)))
     }
@@ -76,7 +76,7 @@ impl Material for Dielectric {
         } else {
             self.refraction_index
         };
-        let unit_direction = UnitVec3::from_vec3(r_in.direction()).unwrap();
+        let unit_direction = UnitVec3::from_vec3(*r_in.direction()).unwrap();
         let cos_theta = (-unit_direction).dot(&rec.normal).min(1.0);
         let sin_thera = (1.0 - cos_theta * cos_theta).sqrt();
         let cannot_refract = ri * sin_thera > 1.0;

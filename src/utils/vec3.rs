@@ -236,7 +236,7 @@ impl UnitVec3 {
         UnitVec3(vec)
     }
 
-    pub fn from_vec3(vec: &Vec3) -> Option<UnitVec3> {
+    pub fn from_vec3(vec: Vec3) -> Option<UnitVec3> {
         let v = vec / vec.length();
         if v[0].is_finite() && v[1].is_finite() && v[2].is_finite() {
             Some(UnitVec3(v))
@@ -247,7 +247,7 @@ impl UnitVec3 {
 
     pub fn new(x: f64, y: f64, z: f64) -> Option<UnitVec3> {
         let v = Vec3 { e: [x, y, z] };
-        UnitVec3::from_vec3(&v)
+        UnitVec3::from_vec3(v)
     }
 
     pub fn random_unit_vector() -> UnitVec3 {
@@ -427,7 +427,7 @@ mod tests {
     #[test]
     fn test_unit_vector() {
         let v = Vec3::new(0.0, 5.0, 0.0);
-        let unit_v = UnitVec3::from_vec3(&v).unwrap();
+        let unit_v = UnitVec3::from_vec3(v).unwrap();
         assert_eq!(unit_v, UnitVec3::new(0.0, 1.0, 0.0).unwrap());
         assert!((unit_v.length() - 1.0).abs() < f64::EPSILON);
     }

@@ -18,12 +18,16 @@ pub struct Camera {
     pub samples_per_pixel: u32,
     pub max_depth: u32,
     pub vertical_fov_in_degree: f64,
+    pub look_from: Point3,
+    pub look_at: Point3,
+    pub vec_up: Vec3,
     image_height: u32,
     center: Point3,
     pixel00_loc: Point3,
     pixel_delta_u: Vec3,
     pixel_delta_v: Vec3,
     pixel_sample_scale: f64,
+    camera_axis: (UnitVec3, UnitVec3, UnitVec3),
 }
 
 impl Default for Camera {
@@ -34,12 +38,16 @@ impl Default for Camera {
             samples_per_pixel: 10,
             max_depth: 10,
             vertical_fov_in_degree: 90.0,
+            look_from: Point3::new(0.0, 0.0, 0.0),
+            look_at: Point3::new(0.0, 0.0, -1.0),
+            vec_up: Vec3::new(0.0, 1.0, 0.0),
             image_height: Default::default(),
             center: Default::default(),
             pixel00_loc: Default::default(),
             pixel_delta_u: Default::default(),
             pixel_delta_v: Default::default(),
             pixel_sample_scale: Default::default(),
+            camera_axis: Default::default(),
         }
     }
 }
@@ -89,22 +97,30 @@ impl Camera {
 
         self.pixel_sample_scale = 1.0 / self.samples_per_pixel as f64;
 
-        self.center = Point3::new(0.0, 0.0, 0.0);
+        self.center = self.look_from;
 
-        let focal_length: f64 = 1.0;
+        let focal_length: f64 = (self.look_from - self.look_at).length();
         let theta = self.vertical_fov_in_degree.to_radians();
         let h = f64::tan(theta / 2.0);
         let viewport_height: f64 = 2.0 * h * focal_length;
         let viewport_width = viewport_height * (self.image_width as f64 / self.image_height as f64);
 
-        let viewport_u = Vec3::new(viewport_width, 0.0, 0.0);
-        let viewport_v = Vec3::new(0.0, -viewport_height, 0.0);
+        self.camera_axis.2 = UnitVec3::from_vec3(self.look_from - self.look_at)
+            .expect("Camera axis w should be normalizable!");
+        self.camera_axis.0 = UnitVec3::from_vec3(self.vec_up.cross(&self.camera_axis.2))
+            .expect("Camera axis u should be normalizable!");
+        self.camera_axis.1 = UnitVec3::from_vec3_raw(self.camera_axis.2.cross(&self.camera_axis.0));
+
+        let viewport_u = viewport_width * self.camera_axis.0.as_inner();
+        let viewport_v = viewport_height * (-self.camera_axis.1.as_inner());
 
         self.pixel_delta_u = viewport_u / self.image_width as f64;
         self.pixel_delta_v = viewport_v / self.image_height as f64;
 
-        let viewport_upper_left =
-            self.center - Vec3::new(0.0, 0.0, focal_length) - viewport_u / 2.0 - viewport_v / 2.0;
+        let viewport_upper_left = self.center
+            - focal_length * self.camera_axis.2.as_inner()
+            - viewport_u / 2.0
+            - viewport_v / 2.0;
         self.pixel00_loc = viewport_upper_left + 0.5 * (self.pixel_delta_u + self.pixel_delta_v);
     }
 
@@ -136,7 +152,7 @@ fn ray_color(r: &Ray, depth: u32, world: &dyn Hittable) -> Color {
         }
     }
 
-    let unit_vec = UnitVec3::from_vec3(r.direction()).unwrap();
+    let unit_vec = UnitVec3::from_vec3(*r.direction()).unwrap();
     let a = 0.5 * (unit_vec.y() + 1.0);
 
     (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
