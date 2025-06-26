@@ -52,29 +52,21 @@ fn main() {
     camera.image_width = image_width;
     camera.samples_per_pixel = 100;
     camera.max_depth = 50;
-    camera.vertical_fov_in_degree = 90.0;
+
+    camera.vertical_fov_in_degrees = 20.0;
     camera.look_from = Point3::new(-2.0, 2.0, 1.0);
     camera.look_at = Point3::new(0.0, 0.0, -1.0);
     camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
 
+    camera.defocus_angle_in_degrees = 10.0;
+    camera.focus_distance = 3.4;
+
     let img = camera.render(&world);
 
-    let path_string = format!("output/book1/{}.png", "image20");
+    let path_string = format!("output/book1/{}.png", "image22");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
-    println!(
-        "Output image as \"{}\"",
-        style(path.to_str().unwrap()).yellow()
-    );
-    img.save(path).expect("Cannot save the image to the file");
-
-    camera.vertical_fov_in_degree = 20.0;
-
-    let img = camera.render(&world);
-
-    let path_string = format!("output/book1/{}.png", "image21");
-    let path = std::path::Path::new(&path_string);
     println!(
         "Output image as \"{}\"",
         style(path.to_str().unwrap()).yellow()

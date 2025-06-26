@@ -1,4 +1,5 @@
 use std::{
+    f64::consts::PI,
     fmt::Display,
     iter::Sum,
     ops::{AddAssign, Deref, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, RangeInclusive},
@@ -29,6 +30,14 @@ impl Vec3 {
                 rand::random_range(range.clone()),
                 rand::random_range(range),
             ],
+        }
+    }
+
+    pub fn random_in_unit_disk() -> Vec3 {
+        let theta = rand::random_range(0.0..(2.0 * PI));
+        let r = rand::random::<f64>().sqrt();
+        Vec3 {
+            e: [r * theta.cos(), r * theta.sin(), 0.0],
         }
     }
 
