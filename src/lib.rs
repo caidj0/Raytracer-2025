@@ -5,4 +5,5 @@ pub mod hit;
 pub mod hits;
 pub mod material;
 pub mod shapes;
+pub mod texture;
 pub mod utils;

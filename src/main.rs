@@ -5,6 +5,7 @@ use raytracer::{
     hits::Hittables,
     material::{Dielectric, Lambertian, Metal},
     shapes::sphere::Sphere,
+    texture::CheckerTexture,
     utils::{
         color::Color,
         random::Random,
@@ -15,11 +16,15 @@ use raytracer::{
 fn main() {
     let mut world: Hittables = Default::default();
 
-    let ground_material = Box::new(Lambertian::new(&Color::new(0.5, 0.5, 0.5)));
+    let checker_material = Box::new(Lambertian::from_tex(Box::new(CheckerTexture::from_colors(
+        0.32,
+        Color::new(0.2, 0.3, 0.1),
+        Color::new(0.9, 0.9, 0.9),
+    ))));
     world.add(Box::new(Sphere::new(
         Point3::new(0.0, -1000.0, 0.0),
         1000.0,
-        ground_material,
+        checker_material,
     )));
 
     for a in -11..11 {
@@ -36,7 +41,7 @@ fn main() {
                     ..0.8 => {
                         let albedo = Color::random() * Color::random();
                         let center2 = center + Vec3::new(0.0, Random::random_range(0.0..0.5), 0.0);
-                        let shpere_material = Box::new(Lambertian::new(&albedo));
+                        let shpere_material = Box::new(Lambertian::new(albedo));
                         world.add(Box::new(Sphere::new_with_motion(
                             center,
                             center2,
@@ -47,7 +52,7 @@ fn main() {
                     ..0.95 => {
                         let albedo = Color::random_range(0.5..1.0);
                         let fuzz: f64 = Random::random_range(0.0..0.5);
-                        let shpere_material = Box::new(Metal::new(&albedo, fuzz));
+                        let shpere_material = Box::new(Metal::new(albedo, fuzz));
                         world.add(Box::new(Sphere::new(center, 0.2, shpere_material)));
                     }
                     _ => {
@@ -66,14 +71,14 @@ fn main() {
         material1,
     )));
 
-    let material2 = Box::new(Lambertian::new(&Color::new(0.4, 0.2, 0.1)));
+    let material2 = Box::new(Lambertian::new(Color::new(0.4, 0.2, 0.1)));
     world.add(Box::new(Sphere::new(
         Point3::new(-4.0, 1.0, 0.0),
         1.0,
         material2,
     )));
 
-    let material3 = Box::new(Metal::new(&Color::new(0.7, 0.6, 0.5), 0.0));
+    let material3 = Box::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.0));
     world.add(Box::new(Sphere::new(
         Point3::new(4.0, 1.0, 0.0),
         1.0,

@@ -1,5 +1,6 @@
 use crate::{
     hit::HitRecord,
+    texture::{SolidColor, Texture},
     utils::{color::Color, random::Random, ray::Ray, vec3::UnitVec3},
 };
 
@@ -8,12 +9,18 @@ pub trait Material {
 }
 
 pub struct Lambertian {
-    albedo: Color,
+    texure: Box<dyn Texture>,
 }
 
 impl Lambertian {
-    pub fn new(albedo: &Color) -> Lambertian {
-        Lambertian { albedo: *albedo }
+    pub fn new(albedo: Color) -> Lambertian {
+        Lambertian {
+            texure: Box::new(SolidColor::new(albedo)),
+        }
+    }
+
+    pub fn from_tex(texure: Box<dyn Texture>) -> Lambertian {
+        Lambertian { texure }
     }
 }
 
@@ -27,7 +34,7 @@ impl Material for Lambertian {
             raw_scatter_direction
         };
         Some((
-            self.albedo,
+            self.texure.value(rec.u, rec.v, &rec.p),
             Ray::new_with_time(rec.p, scatter_direction, *r_in.time()),
         ))
     }
@@ -39,9 +46,9 @@ pub struct Metal {
 }
 
 impl Metal {
-    pub fn new(albedo: &Color, fuzz: f64) -> Metal {
+    pub fn new(albedo: Color, fuzz: f64) -> Metal {
         Metal {
-            albedo: *albedo,
+            albedo,
             fuzz: fuzz.clamp(0.0, 1.0),
         }
     }

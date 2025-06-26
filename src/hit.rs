@@ -9,10 +9,14 @@ use crate::{
 };
 
 pub struct HitRecord<'a> {
-    pub p: Point3,        // 击中位置
-    pub normal: UnitVec3, // 法线，必须为单位矢量
+    pub p: Point3, // 击中位置
+    pub normal: UnitVec3,
     pub mat: &'a dyn Material,
     pub t: f64, // 射线长度
+
+    pub u: f64,
+    pub v: f64, // 撞击点表面坐标
+
     pub front_face: bool,
 }
 
@@ -30,6 +34,8 @@ impl<'a> HitRecord<'a> {
             normal: if front_face { normal } else { -normal },
             mat,
             t,
+            u: 0.0,
+            v: 0.0, // TODO
             front_face,
         }
     }
