@@ -17,6 +17,7 @@ pub struct Camera {
     pub image_width: u32,
     pub samples_per_pixel: u32,
     pub max_depth: u32,
+    pub vertical_fov_in_degree: f64,
     image_height: u32,
     center: Point3,
     pixel00_loc: Point3,
@@ -32,6 +33,7 @@ impl Default for Camera {
             image_width: 100,
             samples_per_pixel: 10,
             max_depth: 10,
+            vertical_fov_in_degree: 90.0,
             image_height: Default::default(),
             center: Default::default(),
             pixel00_loc: Default::default(),
@@ -90,7 +92,9 @@ impl Camera {
         self.center = Point3::new(0.0, 0.0, 0.0);
 
         let focal_length: f64 = 1.0;
-        let viewport_height: f64 = 2.0;
+        let theta = self.vertical_fov_in_degree.to_radians();
+        let h = f64::tan(theta / 2.0);
+        let viewport_height: f64 = 2.0 * h * focal_length;
         let viewport_width = viewport_height * (self.image_width as f64 / self.image_height as f64);
 
         let viewport_u = Vec3::new(viewport_width, 0.0, 0.0);
