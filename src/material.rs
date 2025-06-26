@@ -18,7 +18,7 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
         let raw_scatter_direction =
             rec.normal.as_inner() + UnitVec3::random_unit_vector().as_inner();
         let scatter_direction = if raw_scatter_direction.near_zero() {
@@ -26,7 +26,10 @@ impl Material for Lambertian {
         } else {
             raw_scatter_direction
         };
-        Some((self.albedo, Ray::new(rec.p, scatter_direction)))
+        Some((
+            self.albedo,
+            Ray::new_with_time(rec.p, scatter_direction, *r_in.time()),
+        ))
     }
 }
 
@@ -49,7 +52,10 @@ impl Material for Metal {
         let raw_reflected = UnitVec3::from_vec3(*r_in.direction())?.reflect(&rec.normal);
         let reflected = UnitVec3::from_vec3(raw_reflected)?.into_inner()
             + (self.fuzz * UnitVec3::random_unit_vector().into_inner());
-        Some((self.albedo, Ray::new(rec.p, reflected)))
+        Some((
+            self.albedo,
+            Ray::new_with_time(rec.p, reflected, *r_in.time()),
+        ))
     }
 }
 
@@ -83,7 +89,7 @@ impl Material for Dielectric {
 
         Some((
             Color::WHITE,
-            Ray::new(
+            Ray::new_with_time(
                 rec.p,
                 if cannot_refract || Dielectric::reflectance(cos_theta, ri) > rand::random() {
                     unit_direction.reflect(&rec.normal)
@@ -93,6 +99,7 @@ impl Material for Dielectric {
                         .unwrap()
                         .into_inner()
                 },
+                *r_in.time(),
             ),
         ))
     }

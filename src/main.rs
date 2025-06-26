@@ -1,8 +1,9 @@
 use console::style;
+use rand::random_range;
 use raytracer::{
     camera::Camera,
     hits::Hittables,
-    material::{Dielectric, Lambertian, Material, Metal},
+    material::{Dielectric, Lambertian, Metal},
     shapes::sphere::Sphere,
     utils::{
         color::Color,
@@ -30,19 +31,29 @@ fn main() {
             );
 
             if (center - Point3::new(4.0, 0.2, 0.0)).length() > 0.9 {
-                let shpere_material: Box<dyn Material> = match choose_mat {
+                match choose_mat {
                     ..0.8 => {
                         let albedo = Color::random() * Color::random();
-                        Box::new(Lambertian::new(&albedo))
+                        let center2 = center + Vec3::new(0.0, random_range(0.0..0.5), 0.0);
+                        let shpere_material = Box::new(Lambertian::new(&albedo));
+                        world.add(Box::new(Sphere::new_with_time(
+                            center,
+                            center2,
+                            0.2,
+                            shpere_material,
+                        )));
                     }
                     ..0.95 => {
                         let albedo = Color::random_range(0.5..=1.0);
                         let fuzz: f64 = rand::random_range(0.0..0.5);
-                        Box::new(Metal::new(&albedo, fuzz))
+                        let shpere_material = Box::new(Metal::new(&albedo, fuzz));
+                        world.add(Box::new(Sphere::new(center, 0.2, shpere_material)));
                     }
-                    _ => Box::new(Dielectric::new(1.5)),
+                    _ => {
+                        let shpere_material = Box::new(Dielectric::new(1.5));
+                        world.add(Box::new(Sphere::new(center, 0.2, shpere_material)));
+                    }
                 };
-                world.add(Box::new(Sphere::new(center, 0.2, shpere_material)));
             }
         }
     }
@@ -70,8 +81,8 @@ fn main() {
 
     let mut camera = Camera::default();
     camera.aspect_ratio = 16.0 / 9.0;
-    camera.image_width = 1200;
-    camera.samples_per_pixel = 500;
+    camera.image_width = 400;
+    camera.samples_per_pixel = 100;
     camera.max_depth = 50;
 
     camera.vertical_fov_in_degrees = 20.0;
@@ -84,7 +95,7 @@ fn main() {
 
     let img = camera.render(&world);
 
-    let path_string = format!("output/book1/{}.png", "image23");
+    let path_string = format!("output/{}/{}.png", "book2", "image1");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");

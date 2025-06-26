@@ -83,6 +83,8 @@ impl Vec3 {
             self[0] * rhs[1] - self[1] * rhs[0],
         )
     }
+
+    pub const ZERO: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 }
 
 impl Mul<Vec3> for f64 {
