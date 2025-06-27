@@ -5,6 +5,7 @@ use image::RgbImage;
 use raytracer::{
     bvh::BVH,
     camera::Camera,
+    hit::{RotateY, Translate},
     hits::Hittables,
     material::{Dielectric, DiffuseLight, Lambertian, Metal},
     shapes::{
@@ -30,7 +31,7 @@ fn main() {
         _ => boncing_spheres(),
     };
 
-    let path_string = format!("output/{}/{}.png", "book2", "image20");
+    let path_string = format!("output/{}/{}.png", "book2", "image21");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -86,16 +87,24 @@ fn cornell_box() -> RgbImage {
         white.clone(),
     )));
 
-    world.add(Box::new(build_box(
-        Point3::new(130.0, 0.0, 65.0),
-        Point3::new(295.0, 165.0, 230.0),
+    let box1 = Box::new(build_box(
+        Point3::ZERO,
+        Point3::new(165.0, 330.0, 165.0),
         white.clone(),
-    )));
-    world.add(Box::new(build_box(
-        Point3::new(265.0, 0.0, 295.0),
-        Point3::new(430.0, 330.0, 460.0),
+    ));
+    let box1 = Box::new(RotateY::new(box1, 15.0));
+    let box1 = Box::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0)));
+
+    let box2 = Box::new(build_box(
+        Point3::ZERO,
+        Point3::new(165.0, 165.0, 165.0),
         white,
-    )));
+    ));
+    let box2 = Box::new(RotateY::new(box2, -18.0));
+    let box2 = Box::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0)));
+
+    world.add(box1);
+    world.add(box2);
 
     let mut camera = Camera::default();
     camera.aspect_ratio = 1.0;

@@ -1,4 +1,10 @@
-use crate::utils::{interval::Interval, ray::Ray, vec3::Point3};
+use std::ops::Add;
+
+use crate::utils::{
+    interval::Interval,
+    ray::Ray,
+    vec3::{Point3, Vec3},
+};
 
 #[derive(Default, Clone, Copy)]
 pub struct AABB {
@@ -90,7 +96,44 @@ impl AABB {
         y: Interval::UNIVERSE,
         z: Interval::UNIVERSE,
     };
+
+    pub fn x(&self) -> Interval {
+        self.x
+    }
+
+    pub fn y(&self) -> Interval {
+        self.y
+    }
+
+    pub fn z(&self) -> Interval {
+        self.z
+    }
 }
+
+impl Add<Vec3> for AABB {
+    type Output = AABB;
+
+    fn add(self, offset: Vec3) -> Self::Output {
+        AABB {
+            x: self.x + offset.x(),
+            y: self.y + offset.y(),
+            z: self.z + offset.z(),
+        }
+    }
+}
+
+impl Add<AABB> for Vec3 {
+    type Output = AABB;
+
+    fn add(self, offset: AABB) -> Self::Output {
+        AABB {
+            x: offset.x + self.x(),
+            y: offset.y + self.y(),
+            z: offset.z + self.z(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::utils::vec3::Vec3;
