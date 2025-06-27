@@ -17,7 +17,7 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 6 {
+    let img = match 7 {
         2 => checkered_spheres(),
         3 => earth(),
         4 => perlin_spheres(),
@@ -27,7 +27,7 @@ fn main() {
         _ => boncing_spheres(),
     };
 
-    let path_string = format!("output/{}/{}.png", "book2", "image18");
+    let path_string = format!("output/{}/{}.png", "book2", "image19");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
