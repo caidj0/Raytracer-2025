@@ -9,7 +9,7 @@ pub struct AABB {
 
 impl AABB {
     pub fn new(x: Interval, y: Interval, z: Interval) -> AABB {
-        AABB { x, y, z }
+        AABB { x, y, z }.pad_to_minimums()
     }
 
     pub fn from_points(a: Point3, b: Point3) -> AABB {
@@ -18,6 +18,17 @@ impl AABB {
             y: Interval::new(a[1], b[1]),
             z: Interval::new(a[2], b[2]),
         }
+        .pad_to_minimums()
+    }
+
+    fn pad_to_minimums(self) -> AABB {
+        const DELTA: f64 = 0.0001;
+
+        let (x, y, z) = [self.x, self.y, self.z]
+            .map(|t| if t.size() < DELTA { t.expand(DELTA) } else { t })
+            .into();
+
+        AABB { x, y, z }
     }
 
     pub fn axis_interval(&self, n: usize) -> &Interval {

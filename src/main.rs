@@ -7,7 +7,7 @@ use raytracer::{
     camera::Camera,
     hits::Hittables,
     material::{Dielectric, Lambertian, Metal},
-    shapes::sphere::Sphere,
+    shapes::{quad::Quad, sphere::Sphere},
     texture::{CheckerTexture, ImageTexture, NoiseTexture},
     utils::{
         color::Color,
@@ -17,14 +17,15 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 4 {
+    let img = match 5 {
         2 => checkered_spheres(),
         3 => earth(),
         4 => perlin_spheres(),
+        5 => quads(),
         _ => boncing_spheres(),
     };
 
-    let path_string = format!("output/{}/{}.png", "book2", "image15");
+    let path_string = format!("output/{}/{}.png", "book2", "image16");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -33,6 +34,62 @@ fn main() {
         style(path.to_str().unwrap()).yellow()
     );
     img.save(path).expect("Cannot save the image to the file");
+}
+
+fn quads() -> RgbImage {
+    let mut world = Hittables::default();
+
+    let left_red = Rc::new(Lambertian::new(Color::new(1.0, 0.2, 0.2)));
+    let back_green = Rc::new(Lambertian::new(Color::new(0.2, 1.0, 0.2)));
+    let right_blue = Rc::new(Lambertian::new(Color::new(0.2, 0.2, 1.0)));
+    let upper_orange = Rc::new(Lambertian::new(Color::new(1.0, 0.5, 0.0)));
+    let lower_teal = Rc::new(Lambertian::new(Color::new(0.2, 0.8, 0.8)));
+
+    world.add(Box::new(Quad::new(
+        Point3::new(-3.0, -2.0, 5.0),
+        Vec3::new(0.0, 0.0, -4.0),
+        Vec3::new(0.0, 4.0, 0.0),
+        left_red,
+    )));
+    world.add(Box::new(Quad::new(
+        Point3::new(-2.0, -2.0, 0.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 4.0, 0.0),
+        back_green,
+    )));
+    world.add(Box::new(Quad::new(
+        Point3::new(3.0, -2.0, 1.0),
+        Vec3::new(0.0, 0.0, 4.0),
+        Vec3::new(0.0, 4.0, 0.0),
+        right_blue,
+    )));
+    world.add(Box::new(Quad::new(
+        Point3::new(-2.0, 3.0, 1.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 4.0),
+        upper_orange,
+    )));
+    world.add(Box::new(Quad::new(
+        Point3::new(-2.0, -3.0, 5.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, -4.0),
+        lower_teal,
+    )));
+
+    let mut camera = Camera::default();
+    camera.aspect_ratio = 1.0;
+    camera.image_width = 400;
+    camera.samples_per_pixel = 100;
+    camera.max_depth = 50;
+
+    camera.vertical_fov_in_degrees = 80.0;
+    camera.look_from = Point3::new(0.0, 0.0, 9.0);
+    camera.look_at = Point3::new(0.0, 0.0, 0.0);
+    camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
+
+    camera.defocus_angle_in_degrees = 0.0;
+
+    camera.render(&world)
 }
 
 fn perlin_spheres() -> RgbImage {
