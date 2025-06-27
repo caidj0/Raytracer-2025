@@ -32,11 +32,46 @@ impl Perlin {
     const POINT_COUNT: usize = 256;
 
     pub fn noise(&self, p: &Point3) -> f64 {
-        let i = (4.0 * p.x()) as i32 & 255;
-        let j = (4.0 * p.y()) as i32 & 255;
-        let k = (4.0 * p.z()) as i32 & 255;
+        let i = p.x().floor();
+        let j = p.y().floor();
+        let k = p.z().floor();
 
-        self.randfloat[self.perm_x[i as usize] ^ self.perm_y[j as usize] ^ self.perm_z[k as usize]]
+        let u = p.x() - i;
+        let v = p.y() - j;
+        let w = p.z() - k;
+
+        let i = i as i64;
+        let j = j as i64;
+        let k = k as i64;
+
+        let mut c: [[[f64; 2]; 2]; 2] = Default::default();
+
+        for (di, item_i) in c.iter_mut().enumerate() {
+            for (dj, item_j) in item_i.iter_mut().enumerate() {
+                for (dk, item) in item_j.iter_mut().enumerate() {
+                    *item = self.randfloat[self.perm_x[(i + di as i64) as usize & 255]
+                        ^ self.perm_y[(j + dj as i64) as usize & 255]
+                        ^ self.perm_z[(k + dk as i64) as usize & 255]];
+                }
+            }
+        }
+
+        Perlin::trilinear_interp(&c, u, v, w)
+    }
+
+    fn trilinear_interp(c: &[[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
+        let mut accum = 0.0;
+        for (i, item_i) in c.iter().enumerate() {
+            for (j, item_j) in item_i.iter().enumerate() {
+                for (k, item) in item_j.iter().enumerate() {
+                    accum += (i as f64 * u + (1 - i) as f64 * (1.0 - u))
+                        * (j as f64 * v + (1 - j) as f64 * (1.0 - v))
+                        * (k as f64 * w + (1 - k) as f64 * (1.0 - w))
+                        * item;
+                }
+            }
+        }
+        accum
     }
 
     fn perlin_generate_perm() -> [usize; Perlin::POINT_COUNT] {
