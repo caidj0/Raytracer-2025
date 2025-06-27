@@ -1,3 +1,5 @@
+use std::iter::repeat_with;
+
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 
@@ -17,8 +19,9 @@ use crate::{
 pub struct Camera {
     pub aspect_ratio: f64,
     pub image_width: u32,
-    pub samples_per_pixel: u32,
+    pub samples_per_pixel: usize,
     pub max_depth: u32,
+    pub background: Color,
 
     pub vertical_fov_in_degrees: f64,
     pub look_from: Point3,
@@ -46,6 +49,7 @@ impl Default for Camera {
             image_width: 100,
             samples_per_pixel: 10,
             max_depth: 10,
+            background: Color::BLACK,
             vertical_fov_in_degrees: 90.0,
             look_from: Point3::new(0.0, 0.0, 0.0),
             look_at: Point3::new(0.0, 0.0, -1.0),
@@ -86,9 +90,10 @@ impl Camera {
 
         for j in 0..self.image_height {
             for i in 0..self.image_width {
-                let pixel_color_sum: Vec3 = (0..self.samples_per_pixel)
-                    .map(|_| ray_color(&self.get_ray(i, j), self.max_depth, world))
-                    .sum();
+                let pixel_color_sum: Vec3 =
+                    repeat_with(|| self.ray_color(&self.get_ray(i, j), self.max_depth, world))
+                        .take(self.samples_per_pixel)
+                        .sum();
                 let pixel_color = pixel_color_sum * self.pixel_sample_scale;
                 let pixel = img.get_pixel_mut(i, j);
                 *pixel = image::Rgb(pixel_color.to_rgb());
@@ -161,22 +166,24 @@ impl Camera {
         let p = Vec3::random_in_unit_disk();
         self.center + (p[0] * self.defocus_disk_u) + (p[1] * self.defocus_disk_v)
     }
-}
 
-fn ray_color(r: &Ray, depth: u32, world: &dyn Hittable) -> Color {
-    if depth == 0 {
-        return Color::BLACK;
-    }
-    if let Some(rec) = world.hit(r, &Interval::from_range(0.001..f64::INFINITY)) {
-        if let Some((attenuation, scatter)) = rec.mat.scatter(r, &rec) {
-            return attenuation * ray_color(&scatter, depth - 1, world);
-        } else {
+    fn ray_color(&self, r: &Ray, depth: u32, world: &dyn Hittable) -> Color {
+        if depth == 0 {
             return Color::BLACK;
         }
+
+        let Some(rec) = world.hit(r, &Interval::from_range(0.001..f64::INFINITY)) else {
+            return self.background;
+        };
+
+        let color_from_emission = rec.mat.emitted(rec.u, rec.v, &rec.p);
+
+        let color_from_scatter = if let Some((attenuation, scatter)) = rec.mat.scatter(r, &rec) {
+            attenuation * self.ray_color(&scatter, depth - 1, world)
+        } else {
+            Color::BLACK
+        };
+
+        color_from_emission + color_from_scatter
     }
-
-    let unit_vec = UnitVec3::from_vec3(*r.direction()).unwrap();
-    let a = 0.5 * (unit_vec.y() + 1.0);
-
-    (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
 }

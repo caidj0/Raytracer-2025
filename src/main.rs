@@ -6,7 +6,7 @@ use raytracer::{
     bvh::BVH,
     camera::Camera,
     hits::Hittables,
-    material::{Dielectric, Lambertian, Metal},
+    material::{Dielectric, DiffuseLight, Lambertian, Metal},
     shapes::{quad::Quad, sphere::Sphere},
     texture::{CheckerTexture, ImageTexture, NoiseTexture},
     utils::{
@@ -17,15 +17,16 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 5 {
+    let img = match 6 {
         2 => checkered_spheres(),
         3 => earth(),
         4 => perlin_spheres(),
         5 => quads(),
+        6 => simple_light(),
         _ => boncing_spheres(),
     };
 
-    let path_string = format!("output/{}/{}.png", "book2", "image16");
+    let path_string = format!("output/{}/{}.png", "book2", "image17");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -34,6 +35,47 @@ fn main() {
         style(path.to_str().unwrap()).yellow()
     );
     img.save(path).expect("Cannot save the image to the file");
+}
+
+fn simple_light() -> RgbImage {
+    let mut world = Hittables::default();
+
+    let per_tex = Rc::new(NoiseTexture::new(4.0));
+    let per_mat = Rc::new(Lambertian::from_tex(per_tex));
+    world.add(Box::new(Sphere::new(
+        Point3::new(0.0, -1000.0, 0.0),
+        1000.0,
+        per_mat.clone(),
+    )));
+    world.add(Box::new(Sphere::new(
+        Point3::new(0.0, 2.0, 0.0),
+        2.0,
+        per_mat,
+    )));
+
+    let difflight = Rc::new(DiffuseLight::from_color(Color::new(4.0, 4.0, 4.0)));
+    world.add(Box::new(Quad::new(
+        Point3::new(3.0, 1.0, -2.0),
+        Vec3::new(2.0, 0.0, 0.0),
+        Vec3::new(0.0, 2.0, 0.0),
+        difflight,
+    )));
+
+    let mut camera = Camera::default();
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 400;
+    camera.samples_per_pixel = 100;
+    camera.max_depth = 50;
+    camera.background = Color::BLACK;
+
+    camera.vertical_fov_in_degrees = 20.0;
+    camera.look_from = Point3::new(26.0, 3.0, 6.0);
+    camera.look_at = Point3::new(0.0, 2.0, 0.0);
+    camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
+
+    camera.defocus_angle_in_degrees = 0.0;
+
+    camera.render(&world)
 }
 
 fn quads() -> RgbImage {
@@ -81,6 +123,7 @@ fn quads() -> RgbImage {
     camera.image_width = 400;
     camera.samples_per_pixel = 100;
     camera.max_depth = 50;
+    camera.background = Color::new(0.7, 0.8, 1.0);
 
     camera.vertical_fov_in_degrees = 80.0;
     camera.look_from = Point3::new(0.0, 0.0, 9.0);
@@ -114,6 +157,7 @@ fn perlin_spheres() -> RgbImage {
     camera.image_width = 400;
     camera.samples_per_pixel = 100;
     camera.max_depth = 50;
+    camera.background = Color::new(0.7, 0.8, 1.0);
 
     camera.vertical_fov_in_degrees = 20.0;
     camera.look_from = Point3::new(13.0, 2.0, 3.0);
@@ -135,6 +179,7 @@ fn earth() -> RgbImage {
     camera.image_width = 400;
     camera.samples_per_pixel = 100;
     camera.max_depth = 50;
+    camera.background = Color::new(0.7, 0.8, 1.0);
 
     camera.vertical_fov_in_degrees = 20.0;
     camera.look_from = Point3::new(0.0, 0.0, 12.0);
@@ -170,6 +215,7 @@ fn checkered_spheres() -> RgbImage {
     camera.image_width = 400;
     camera.samples_per_pixel = 100;
     camera.max_depth = 50;
+    camera.background = Color::new(0.7, 0.8, 1.0);
 
     camera.vertical_fov_in_degrees = 20.0;
     camera.look_from = Point3::new(13.0, 2.0, 3.0);
@@ -261,6 +307,7 @@ fn boncing_spheres() -> RgbImage {
     camera.image_width = 400;
     camera.samples_per_pixel = 100;
     camera.max_depth = 50;
+    camera.background = Color::new(0.7, 0.8, 1.0);
 
     camera.vertical_fov_in_degrees = 20.0;
     camera.look_from = Point3::new(13.0, 2.0, 3.0);

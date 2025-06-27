@@ -3,26 +3,37 @@ use std::rc::Rc;
 use crate::{
     hit::HitRecord,
     texture::{SolidColor, Texture},
-    utils::{color::Color, random::Random, ray::Ray, vec3::UnitVec3},
+    utils::{
+        color::Color,
+        random::Random,
+        ray::Ray,
+        vec3::{Point3, UnitVec3},
+    },
 };
 
 pub trait Material {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
+    fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<(Color, Ray)> {
+        None
+    }
+
+    fn emitted(&self, _u: f64, _v: f64, _p: &Point3) -> Color {
+        Color::BLACK
+    }
 }
 
 pub struct Lambertian {
-    texure: Rc<dyn Texture>,
+    texture: Rc<dyn Texture>,
 }
 
 impl Lambertian {
     pub fn new(albedo: Color) -> Lambertian {
         Lambertian {
-            texure: Rc::new(SolidColor::new(albedo)),
+            texture: Rc::new(SolidColor::new(albedo)),
         }
     }
 
     pub fn from_tex(texure: Rc<dyn Texture>) -> Lambertian {
-        Lambertian { texure }
+        Lambertian { texture: texure }
     }
 }
 
@@ -36,7 +47,7 @@ impl Material for Lambertian {
             raw_scatter_direction
         };
         Some((
-            self.texure.value(rec.u, rec.v, &rec.p),
+            self.texture.value(rec.u, rec.v, &rec.p),
             Ray::new_with_time(rec.p, scatter_direction, *r_in.time()),
         ))
     }
@@ -111,5 +122,27 @@ impl Material for Dielectric {
                 *r_in.time(),
             ),
         ))
+    }
+}
+
+pub struct DiffuseLight {
+    texture: Rc<dyn Texture>,
+}
+
+impl DiffuseLight {
+    pub fn from_color(emit: Color) -> DiffuseLight {
+        DiffuseLight {
+            texture: Rc::new(SolidColor::new(emit)),
+        }
+    }
+
+    pub fn from_tex(texture: Rc<dyn Texture>) -> DiffuseLight {
+        DiffuseLight { texture }
+    }
+}
+
+impl Material for DiffuseLight {
+    fn emitted(&self, u: f64, v: f64, p: &Point3) -> Color {
+        self.texture.value(u, v, p)
     }
 }
