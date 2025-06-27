@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::utils::{color::Color, vec3::Point3};
+use crate::utils::{color::Color, image::Image, vec3::Point3};
 
 pub trait Texture {
     fn value(&self, u: f64, v: f64, p: &Point3) -> Color;
@@ -69,5 +69,34 @@ impl Texture for CheckerTexture {
         } else {
             self.odd.value(u, v, p)
         }
+    }
+}
+
+pub struct ImageTexture {
+    image: Image,
+}
+
+impl ImageTexture {
+    pub fn new(file_name: &str) -> ImageTexture {
+        ImageTexture {
+            image: Image::new(file_name),
+        }
+    }
+}
+
+impl Texture for ImageTexture {
+    fn value(&self, u: f64, v: f64, _p: &Point3) -> Color {
+        if self.image.height() == 0 {
+            return Color::new(0.0, 1.0, 1.0);
+        }
+
+        let u = u.clamp(0.0, 1.0);
+        let v = 1.0 - v.clamp(0.0, 1.0);
+
+        let i = (u * self.image.width() as f64) as u32;
+        let j = (v * self.image.height() as f64) as u32;
+        let pixel = self.image.pixel_data(i, j);
+
+        Color::new(pixel.red as f64, pixel.green as f64, pixel.blue as f64)
     }
 }

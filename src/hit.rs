@@ -26,16 +26,18 @@ impl<'a> HitRecord<'a> {
         normal: UnitVec3,
         mat: &'a dyn Material,
         t: f64,
-        r: &Ray,
+        u: f64,
+        v: f64,
+        r_in: &Ray,
     ) -> HitRecord<'a> {
-        let front_face = r.direction().dot(&normal) < 0.0;
+        let front_face = r_in.direction().dot(&normal) < 0.0;
         HitRecord {
             p,
             normal: if front_face { normal } else { -normal },
             mat,
             t,
-            u: 0.0,
-            v: 0.0, // TODO
+            u,
+            v,
             front_face,
         }
     }

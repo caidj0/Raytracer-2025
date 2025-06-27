@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{f64::consts::PI, rc::Rc};
 
 use crate::{
     aabb::AABB,
@@ -46,6 +46,16 @@ impl Sphere {
             bbox: AABB::union(&box1, &box2),
         }
     }
+
+    fn get_sphere_uv(p: UnitVec3) -> (f64, f64) {
+        let theta = f64::acos(-p.y());
+        let phi = f64::atan2(-p.z(), p.x()) + PI;
+
+        let u = phi / (2.0 * PI);
+        let v = theta / PI;
+
+        (u, v)
+    }
 }
 
 impl Hittable for Sphere {
@@ -77,11 +87,38 @@ impl Hittable for Sphere {
 
         let p = r.at(root);
         let outward_normal = UnitVec3::from_vec3_raw((p - current_center) / self.radius);
-        let hr = HitRecord::new(p, outward_normal, self.mat.as_ref(), root, r);
+        let (u, v) = Sphere::get_sphere_uv(outward_normal);
+        let hr = HitRecord::new(p, outward_normal, self.mat.as_ref(), root, u, v, r);
         Some(hr)
     }
 
     fn bounding_box(&self) -> &AABB {
         &self.bbox
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sphere_uv() {
+        let (u, v) = Sphere::get_sphere_uv(UnitVec3::from_vec3_raw(Vec3::new(1.0, 0.0, 0.0)));
+        assert_eq!((u, v), (0.5, 0.5));
+
+        let (u, v) = Sphere::get_sphere_uv(UnitVec3::from_vec3_raw(Vec3::new(-1.0, 0.0, 0.0)));
+        assert_eq!((u, v), (0.0, 0.5));
+
+        let (u, v) = Sphere::get_sphere_uv(UnitVec3::from_vec3_raw(Vec3::new(0.0, 1.0, 0.0)));
+        assert_eq!((u, v), (0.5, 1.0));
+
+        let (u, v) = Sphere::get_sphere_uv(UnitVec3::from_vec3_raw(Vec3::new(0.0, -1.0, 0.0)));
+        assert_eq!((u, v), (0.5, 0.0));
+
+        let (u, v) = Sphere::get_sphere_uv(UnitVec3::from_vec3_raw(Vec3::new(0.0, 0.0, 1.0)));
+        assert_eq!((u, v), (0.25, 0.5));
+
+        let (u, v) = Sphere::get_sphere_uv(UnitVec3::from_vec3_raw(Vec3::new(0.0, 0.0, -1.0)));
+        assert_eq!((u, v), (0.75, 0.5));
     }
 }

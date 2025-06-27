@@ -8,7 +8,7 @@ use raytracer::{
     hits::Hittables,
     material::{Dielectric, Lambertian, Metal},
     shapes::sphere::Sphere,
-    texture::CheckerTexture,
+    texture::{CheckerTexture, ImageTexture},
     utils::{
         color::Color,
         random::Random,
@@ -17,12 +17,13 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 2 {
+    let img = match 3 {
         2 => checkered_spheres(),
+        3 => earth(),
         _ => boncing_spheres(),
     };
 
-    let path_string = format!("output/{}/{}.png", "book2", "image3");
+    let path_string = format!("output/{}/{}.png", "book2", "image5");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -31,6 +32,27 @@ fn main() {
         style(path.to_str().unwrap()).yellow()
     );
     img.save(path).expect("Cannot save the image to the file");
+}
+
+fn earth() -> RgbImage {
+    let earth_texture = Rc::new(ImageTexture::new("earthmap.jpg"));
+    let earth_surface = Rc::new(Lambertian::from_tex(earth_texture));
+    let globe = Box::new(Sphere::new(Vec3::ZERO, 2.0, earth_surface));
+
+    let mut camera = Camera::default();
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 400;
+    camera.samples_per_pixel = 100;
+    camera.max_depth = 50;
+
+    camera.vertical_fov_in_degrees = 20.0;
+    camera.look_from = Point3::new(0.0, 0.0, 12.0);
+    camera.look_at = Point3::new(0.0, 0.0, 0.0);
+    camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
+
+    camera.defocus_angle_in_degrees = 0.0;
+
+    camera.render(&Hittables::new(globe))
 }
 
 fn checkered_spheres() -> RgbImage {
