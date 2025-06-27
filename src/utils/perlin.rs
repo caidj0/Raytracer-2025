@@ -56,6 +56,18 @@ impl Perlin {
         Perlin::perlin_interp(&c, u, v, w)
     }
 
+    pub fn turb(&self, p: &Point3, depth: usize) -> f64 {
+        let (accum, _, _) = (0..depth).fold((0.0, *p, 1.0), |(accum, temp_p, weight), _| {
+            (
+                accum + weight * self.noise(&temp_p),
+                2.0 * temp_p,
+                0.5 * weight,
+            )
+        });
+
+        accum.abs()
+    }
+
     fn perlin_interp(c: &[[[UnitVec3; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
         let (uu, vv, ww) = [u, v, w].map(|x| x * x * (3.0 - 2.0 * x)).into();
         let mut accum = 0.0;
