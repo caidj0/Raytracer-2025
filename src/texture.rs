@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::utils::{color::Color, image::Image, vec3::Point3};
+use crate::utils::{color::Color, image::Image, perlin::Perlin, vec3::Point3};
 
 pub trait Texture {
     fn value(&self, u: f64, v: f64, p: &Point3) -> Color;
@@ -98,5 +98,16 @@ impl Texture for ImageTexture {
         let pixel = self.image.pixel_data(i, j);
 
         Color::new(pixel.red as f64, pixel.green as f64, pixel.blue as f64)
+    }
+}
+
+#[derive(Default)]
+pub struct NoiseTexture {
+    noise: Perlin,
+}
+
+impl Texture for NoiseTexture {
+    fn value(&self, _u: f64, _v: f64, p: &Point3) -> Color {
+        Color::WHITE * self.noise.noise(p)
     }
 }

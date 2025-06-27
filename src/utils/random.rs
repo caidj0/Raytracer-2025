@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::ops::{Range, RangeInclusive};
 
 pub struct Random;
 
@@ -12,6 +12,10 @@ impl Random {
     }
 
     pub fn i32(interval: Range<i32>) -> i32 {
+        rand::random_range(interval)
+    }
+
+    pub fn usize(interval: RangeInclusive<usize>) -> usize {
         rand::random_range(interval)
     }
 }

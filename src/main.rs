@@ -8,7 +8,7 @@ use raytracer::{
     hits::Hittables,
     material::{Dielectric, Lambertian, Metal},
     shapes::sphere::Sphere,
-    texture::{CheckerTexture, ImageTexture},
+    texture::{CheckerTexture, ImageTexture, NoiseTexture},
     utils::{
         color::Color,
         random::Random,
@@ -17,13 +17,14 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 3 {
+    let img = match 4 {
         2 => checkered_spheres(),
         3 => earth(),
+        4 => perlin_spheres(),
         _ => boncing_spheres(),
     };
 
-    let path_string = format!("output/{}/{}.png", "book2", "image5");
+    let path_string = format!("output/{}/{}.png", "book2", "image9");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -32,6 +33,39 @@ fn main() {
         style(path.to_str().unwrap()).yellow()
     );
     img.save(path).expect("Cannot save the image to the file");
+}
+
+fn perlin_spheres() -> RgbImage {
+    let mut world = Hittables::default();
+
+    let perlin_tex = Rc::new(NoiseTexture::default());
+
+    world.add(Box::new(Sphere::new(
+        Point3::new(0.0, -1000.0, 0.0),
+        1000.0,
+        Rc::new(Lambertian::from_tex(perlin_tex.clone())),
+    )));
+
+    world.add(Box::new(Sphere::new(
+        Point3::new(0.0, 2.0, 0.0),
+        2.0,
+        Rc::new(Lambertian::from_tex(perlin_tex)),
+    )));
+
+    let mut camera = Camera::default();
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 400;
+    camera.samples_per_pixel = 100;
+    camera.max_depth = 50;
+
+    camera.vertical_fov_in_degrees = 20.0;
+    camera.look_from = Point3::new(13.0, 2.0, 3.0);
+    camera.look_at = Point3::new(0.0, 0.0, 0.0);
+    camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
+
+    camera.defocus_angle_in_degrees = 0.0;
+
+    camera.render(&world)
 }
 
 fn earth() -> RgbImage {
