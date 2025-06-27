@@ -32,17 +32,15 @@ impl Perlin {
     const POINT_COUNT: usize = 256;
 
     pub fn noise(&self, p: &Point3) -> f64 {
-        let i = p.x().floor();
-        let j = p.y().floor();
-        let k = p.z().floor();
+        let i = p.x().floor() as i64;
+        let j = p.y().floor() as i64;
+        let k = p.z().floor() as i64;
 
-        let u = p.x() - i;
-        let v = p.y() - j;
-        let w = p.z() - k;
-
-        let i = i as i64;
-        let j = j as i64;
-        let k = k as i64;
+        let (u, v, w) = p
+            .e()
+            .map(|x| x - x.floor())
+            .map(|x| x * x * (3.0 - 2.0 * x))
+            .into();
 
         let mut c: [[[f64; 2]; 2]; 2] = Default::default();
 
