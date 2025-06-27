@@ -19,6 +19,10 @@ impl Vec3 {
         Vec3 { e: [x, y, z] }
     }
 
+    pub const fn from(e: [f64; 3]) -> Vec3 {
+        Vec3 { e }
+    }
+
     pub fn random() -> Vec3 {
         Vec3 {
             e: [Random::f64(), Random::f64(), Random::f64()],

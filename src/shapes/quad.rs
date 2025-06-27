@@ -3,6 +3,7 @@ use std::rc::Rc;
 use crate::{
     aabb::AABB,
     hit::{HitRecord, Hittable},
+    hits::Hittables,
     material::Material,
     shapes::Planar,
     utils::{
@@ -97,4 +98,67 @@ impl Hittable for Quad {
     fn bounding_box(&self) -> &AABB {
         &self.bbox
     }
+}
+
+pub fn build_box(a: Point3, b: Point3, mat: Rc<dyn Material>) -> Hittables {
+    let mut sides = Hittables::default();
+
+    let min = Point3::from(
+        Iterator::zip(a.e().iter(), b.e().iter())
+            .map(|(x, y)| f64::min(*x, *y))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
+    );
+
+    let max = Point3::from(
+        Iterator::zip(a.e().iter(), b.e().iter())
+            .map(|(x, y)| f64::max(*x, *y))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
+    );
+
+    let dx = Vec3::new(max.x() - min.x(), 0.0, 0.0);
+    let dy = Vec3::new(0.0, max.y() - min.y(), 0.0);
+    let dz = Vec3::new(0.0, 0.0, max.z() - min.z());
+
+    sides.add(Box::new(Quad::new(
+        Point3::new(min.x(), min.y(), max.z()),
+        dx,
+        dy,
+        mat.clone(),
+    )));
+    sides.add(Box::new(Quad::new(
+        Point3::new(max.x(), min.y(), max.z()),
+        -dz,
+        dy,
+        mat.clone(),
+    )));
+    sides.add(Box::new(Quad::new(
+        Point3::new(max.x(), min.y(), min.z()),
+        -dx,
+        dy,
+        mat.clone(),
+    )));
+    sides.add(Box::new(Quad::new(
+        Point3::new(min.x(), min.y(), min.z()),
+        dz,
+        dy,
+        mat.clone(),
+    )));
+    sides.add(Box::new(Quad::new(
+        Point3::new(min.x(), max.y(), max.z()),
+        dx,
+        -dz,
+        mat.clone(),
+    )));
+    sides.add(Box::new(Quad::new(
+        Point3::new(min.x(), min.y(), min.z()),
+        dx,
+        dz,
+        mat,
+    )));
+
+    sides
 }

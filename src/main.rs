@@ -7,7 +7,10 @@ use raytracer::{
     camera::Camera,
     hits::Hittables,
     material::{Dielectric, DiffuseLight, Lambertian, Metal},
-    shapes::{quad::Quad, sphere::Sphere},
+    shapes::{
+        quad::{Quad, build_box},
+        sphere::Sphere,
+    },
     texture::{CheckerTexture, ImageTexture, NoiseTexture},
     utils::{
         color::Color,
@@ -27,7 +30,7 @@ fn main() {
         _ => boncing_spheres(),
     };
 
-    let path_string = format!("output/{}/{}.png", "book2", "image19");
+    let path_string = format!("output/{}/{}.png", "book2", "image20");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -80,6 +83,17 @@ fn cornell_box() -> RgbImage {
         Point3::new(0.0, 0.0, 555.0),
         Vec3::new(555.0, 0.0, 0.0),
         Vec3::new(0.0, 555.0, 0.0),
+        white.clone(),
+    )));
+
+    world.add(Box::new(build_box(
+        Point3::new(130.0, 0.0, 65.0),
+        Point3::new(295.0, 165.0, 230.0),
+        white.clone(),
+    )));
+    world.add(Box::new(build_box(
+        Point3::new(265.0, 0.0, 295.0),
+        Point3::new(430.0, 330.0, 460.0),
         white,
     )));
 
