@@ -24,7 +24,7 @@ fn main() {
         _ => boncing_spheres(),
     };
 
-    let path_string = format!("output/{}/{}.png", "book2", "image12");
+    let path_string = format!("output/{}/{}.png", "book2", "image13");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
