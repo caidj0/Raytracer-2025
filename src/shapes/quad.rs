@@ -4,6 +4,7 @@ use crate::{
     aabb::AABB,
     hit::{HitRecord, Hittable},
     material::Material,
+    shapes::Planar,
     utils::{
         interval::Interval,
         vec3::{Point3, UnitVec3, Vec3},
@@ -38,7 +39,9 @@ impl Quad {
             parm_d,
         }
     }
+}
 
+impl Planar for Quad {
     fn cal_bounding_box(anchor: &Point3, u: &Vec3, v: &Vec3) -> AABB {
         let bbox_diagonal1 = AABB::from_points(*anchor, anchor + u + v);
         let bbox_diagonal2 = AABB::from_points(anchor + u, anchor + v);
