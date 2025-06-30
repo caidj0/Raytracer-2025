@@ -7,3 +7,4 @@ pub mod material;
 pub mod shapes;
 pub mod texture;
 pub mod utils;
+pub mod volume;
