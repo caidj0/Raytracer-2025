@@ -1,4 +1,4 @@
-use std::iter::repeat_with;
+use std::{f64::consts::PI};
 
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
@@ -32,6 +32,8 @@ pub struct Camera {
     pub focus_distance: f64,
 
     image_height: u32,
+    sqrt_spp: u32,
+    recip_sqrt_spp: f64,
     center: Point3,
     pixel00_loc: Point3,
     pixel_delta_u: Vec3,
@@ -57,6 +59,8 @@ impl Default for Camera {
             defocus_angle_in_degrees: 0.0,
             focus_distance: 10.0,
             image_height: Default::default(),
+            sqrt_spp: Default::default(),
+            recip_sqrt_spp: Default::default(),
             center: Default::default(),
             pixel00_loc: Default::default(),
             pixel_delta_u: Default::default(),
@@ -90,10 +94,13 @@ impl Camera {
 
         for j in 0..self.image_height {
             for i in 0..self.image_width {
-                let pixel_color_sum: Vec3 =
-                    repeat_with(|| self.ray_color(&self.get_ray(i, j), self.max_depth, world))
-                        .take(self.samples_per_pixel)
-                        .sum();
+                let mut pixel_color_sum = Vec3::ZERO;
+                for s_j in 0..self.sqrt_spp {
+                    for s_i in 0..self.sqrt_spp {
+                        pixel_color_sum +=
+                            self.ray_color(&self.get_ray(i, j, s_i, s_j), self.max_depth, world);
+                    }
+                }
                 let pixel_color = pixel_color_sum * self.pixel_sample_scale;
                 let pixel = img.get_pixel_mut(i, j);
                 *pixel = image::Rgb(pixel_color.to_rgb());
@@ -113,7 +120,9 @@ impl Camera {
             self.image_height
         };
 
-        self.pixel_sample_scale = 1.0 / self.samples_per_pixel as f64;
+        self.sqrt_spp = f64::sqrt(self.samples_per_pixel as f64) as u32;
+        self.pixel_sample_scale = 1.0 / (self.sqrt_spp * self.sqrt_spp) as f64;
+        self.recip_sqrt_spp = 1.0 / self.sqrt_spp as f64;
 
         self.center = self.look_from;
 
@@ -146,8 +155,8 @@ impl Camera {
         self.defocus_disk_v = self.camera_axis.1.as_inner() * defocus_radius;
     }
 
-    fn get_ray(&self, i: u32, j: u32) -> Ray {
-        let offset = Vec3::new(Random::f64() - 0.5, Random::f64() - 0.5, 0.0);
+    fn get_ray(&self, i: u32, j: u32, s_i: u32, s_j: u32) -> Ray {
+        let offset = self.sample_square_stratified(s_i, s_j);
         let pixel_sample = self.pixel00_loc
             + ((i as f64 + offset.x()) * self.pixel_delta_u)
             + ((j as f64 + offset.y()) * self.pixel_delta_v);
@@ -160,6 +169,13 @@ impl Camera {
         let ray_time = Random::f64();
 
         Ray::new_with_time(ray_origin, ray_direction, ray_time)
+    }
+
+    fn sample_square_stratified(&self, s_i: u32, s_j: u32) -> Vec3 {
+        let px = ((s_i as f64 + Random::f64()) * self.recip_sqrt_spp) - 0.5;
+        let py = ((s_j as f64 + Random::f64()) * self.recip_sqrt_spp) - 0.5;
+
+        Vec3::new(px, py, 0.0)
     }
 
     fn defocus_disk_sample(&self) -> Point3 {
@@ -178,8 +194,11 @@ impl Camera {
 
         let color_from_emission = rec.mat.emitted(rec.u, rec.v, &rec.p);
 
-        let color_from_scatter = if let Some((attenuation, scatter)) = rec.mat.scatter(r, &rec) {
-            attenuation * self.ray_color(&scatter, depth - 1, world)
+        let color_from_scatter = if let Some((attenuation, scattered, pdf_value)) = rec.mat.scatter(r, &rec) {
+            let scattering_pdf = rec.mat.scattering_pdf(r, &rec, &scattered);
+            let pdf_value = scattering_pdf;
+            (attenuation * scattering_pdf * self.ray_color(&scattered, depth - 1, world))
+                / pdf_value
         } else {
             Color::BLACK
         };

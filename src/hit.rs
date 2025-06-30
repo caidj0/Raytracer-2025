@@ -95,7 +95,7 @@ impl RotateY {
         let cos_theta = radians.cos();
         let bbox = object.bounding_box();
 
-        let xyz_iter = (0..2).flat_map(move |i| {
+        let xyz_iter = (0..2).flat_map(|i| {
             (0..2).flat_map(move |j| {
                 (0..2).map(move |k| {
                     let x = if i == 0 {

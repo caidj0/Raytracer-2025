@@ -1,23 +1,32 @@
-use std::rc::Rc;
+use std::{f64::consts::PI, rc::Rc};
 
 use crate::{
     hit::HitRecord,
-    texture::{SolidColor, Texture},
+    texture::{self, SolidColor, Texture},
     utils::{
         color::Color,
+        onb::OrthonormalBasis,
         random::Random,
         ray::Ray,
-        vec3::{Point3, UnitVec3},
+        vec3::{Point3, UnitVec3, Vec3},
     },
 };
 
 pub trait Material {
-    fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<(Color, Ray)> {
+    // 返回值依次为 三原色反射率、反射射线、该反射射线的 pdf
+    #[allow(unused_variables)]
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray, f64)> {
         None
     }
 
-    fn emitted(&self, _u: f64, _v: f64, _p: &Point3) -> Color {
+    #[allow(unused_variables)]
+    fn emitted(&self, u: f64, v: f64, p: &Point3) -> Color {
         Color::BLACK
+    }
+
+    #[allow(unused_variables)]
+    fn scattering_pdf(&self, r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
+        0.0
     }
 }
 
@@ -38,18 +47,30 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
-        let raw_scatter_direction =
-            rec.normal.as_inner() + UnitVec3::random_unit_vector().as_inner();
-        let scatter_direction = if raw_scatter_direction.near_zero() {
-            rec.normal.into_inner()
-        } else {
-            raw_scatter_direction
-        };
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray, f64)> {
+        let uvw = OrthonormalBasis::new(&rec.normal);
+        let scatter_direction = uvw.transform(UnitVec3::random_cosine_direction().into_inner());
+        let scatter_direction = UnitVec3::from_vec3(scatter_direction).unwrap();
+
         Some((
             self.texture.value(rec.u, rec.v, &rec.p),
-            Ray::new_with_time(rec.p, scatter_direction, *r_in.time()),
+            Ray::new_with_time(rec.p, *scatter_direction.as_inner(), *r_in.time()),
+            Vec3::dot(&uvw.w(), &scatter_direction) / PI,
         ))
+    }
+
+    fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> f64 {
+        // let cos_theta = Vec3::dot(
+        //     &rec.normal,
+        //     &UnitVec3::from_vec3(*scattered.direction()).expect("The length of scattered ray should be normalizable!"),
+        // );
+        // if cos_theta < 0.0 {
+        //     0.0
+        // } else {
+        //     cos_theta / PI
+        // }
+
+        1.0 / (2.0 * PI)
     }
 }
 
@@ -68,13 +89,14 @@ impl Metal {
 }
 
 impl Material for Metal {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray, f64)> {
         let raw_reflected = UnitVec3::from_vec3(*r_in.direction())?.reflect(&rec.normal);
         let reflected = UnitVec3::from_vec3(raw_reflected)?.into_inner()
             + (self.fuzz * UnitVec3::random_unit_vector().into_inner());
         Some((
             self.albedo,
             Ray::new_with_time(rec.p, reflected, *r_in.time()),
+            todo!(),
         ))
     }
 }
@@ -96,7 +118,7 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray, f64)> {
         let ri = if rec.front_face {
             1.0 / self.refraction_index
         } else {
@@ -121,6 +143,7 @@ impl Material for Dielectric {
                 },
                 *r_in.time(),
             ),
+            todo!()
         ))
     }
 }
@@ -164,7 +187,7 @@ impl Isotropic {
 }
 
 impl Material for Isotropic {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray, f64)> {
         Some((
             self.texture.value(rec.u, rec.v, &rec.p),
             Ray::new_with_time(
@@ -172,6 +195,11 @@ impl Material for Isotropic {
                 UnitVec3::random_unit_vector().into_inner(),
                 *r_in.time(),
             ),
+            1.0 / (4.0 * PI),
         ))
+    }
+
+    fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> f64 {
+        1.0 / (4.0 * PI)
     }
 }

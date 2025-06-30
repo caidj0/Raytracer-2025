@@ -22,7 +22,7 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 9 {
+    let img = match 7 {
         1 => boncing_spheres(),
         2 => checkered_spheres(),
         3 => earth(),
@@ -35,7 +35,7 @@ fn main() {
         _ => final_scene(400, 250, 4),
     };
 
-    let path_string = format!("output/{}/{}.png", "book2", "image23");
+    let path_string = format!("output/{}/{}.png", "book3", "image5");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -329,7 +329,7 @@ fn cornell_box() -> RgbImage {
     let mut camera = Camera::default();
     camera.aspect_ratio = 1.0;
     camera.image_width = 600;
-    camera.samples_per_pixel = 200;
+    camera.samples_per_pixel = 10;
     camera.max_depth = 50;
     camera.background = Color::BLACK;
 

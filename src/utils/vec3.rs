@@ -268,13 +268,14 @@ impl UnitVec3 {
     }
 
     pub fn random_unit_vector() -> UnitVec3 {
-        loop {
-            let p = Vec3::random_range(-1.0..1.0);
-            let lensq = p.length_squared();
-            if 1e-160 < lensq && lensq <= 1.0 {
-                return UnitVec3::from_vec3_raw(p / lensq.sqrt());
-            }
-        }
+        let r1 = Random::f64();
+        let r2 = Random::f64();
+
+        let x = f64::cos(2.0 * PI * r1) * 2.0 * f64::sqrt(r2 * (1.0 - r2));
+        let y = f64::sin(2.0 * PI * r1) * 2.0 * f64::sqrt(r2 * (1.0 - r2));
+        let z = 1.0 - 2.0 * r2;
+
+        UnitVec3::from_vec3_raw(Vec3::new(x, y, z))
     }
 
     pub fn random_on_hemisphere(normal: &UnitVec3) -> UnitVec3 {
@@ -284,6 +285,18 @@ impl UnitVec3 {
         } else {
             -on_unit_sphere
         }
+    }
+
+    pub fn random_cosine_direction() -> UnitVec3 {
+        let r1 = Random::f64();
+        let r2 = Random::f64();
+
+        let phi = 2.0 * PI * r1;
+        let x = phi.cos() * r2.sqrt();
+        let y = phi.sin() * r2.sqrt();
+        let z = (1.0 - r2).sqrt();
+
+        UnitVec3::from_vec3_raw(Vec3::new(x, y, z))
     }
 
     pub fn refract(&self, normal: &UnitVec3, relative_eta: f64) -> Option<UnitVec3> {
