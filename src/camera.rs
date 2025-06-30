@@ -192,7 +192,7 @@ impl Camera {
             return self.background;
         };
 
-        let color_from_emission = rec.mat.emitted(rec.u, rec.v, &rec.p);
+        let color_from_emission = rec.mat.emitted(r, &rec, rec.u, rec.v, &rec.p);
 
         let Some((attenuation, scattered, pdf_value)) = rec.mat.scatter(r, &rec) else {
             return color_from_emission;

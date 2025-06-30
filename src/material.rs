@@ -20,7 +20,7 @@ pub trait Material {
     }
 
     #[allow(unused_variables)]
-    fn emitted(&self, u: f64, v: f64, p: &Point3) -> Color {
+    fn emitted(&self, r_in: &Ray, rec: &HitRecord, u: f64, v: f64, p: &Point3) -> Color {
         Color::BLACK
     }
 
@@ -143,7 +143,7 @@ impl Material for Dielectric {
                 },
                 *r_in.time(),
             ),
-            todo!()
+            todo!(),
         ))
     }
 }
@@ -165,8 +165,12 @@ impl DiffuseLight {
 }
 
 impl Material for DiffuseLight {
-    fn emitted(&self, u: f64, v: f64, p: &Point3) -> Color {
-        self.texture.value(u, v, p)
+    fn emitted(&self, _ray: &Ray, rec: &HitRecord, u: f64, v: f64, p: &Point3) -> Color {
+        if rec.front_face {
+            self.texture.value(u, v, p)
+        } else {
+            Color::BLACK
+        }
     }
 }
 
