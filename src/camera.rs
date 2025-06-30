@@ -1,4 +1,4 @@
-use std::{f64::consts::PI};
+use std::f64::consts::PI;
 
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
@@ -194,14 +194,39 @@ impl Camera {
 
         let color_from_emission = rec.mat.emitted(rec.u, rec.v, &rec.p);
 
-        let color_from_scatter = if let Some((attenuation, scattered, pdf_value)) = rec.mat.scatter(r, &rec) {
-            let scattering_pdf = rec.mat.scattering_pdf(r, &rec, &scattered);
-            let pdf_value = scattering_pdf;
-            (attenuation * scattering_pdf * self.ray_color(&scattered, depth - 1, world))
-                / pdf_value
-        } else {
-            Color::BLACK
+        let Some((attenuation, scattered, pdf_value)) = rec.mat.scatter(r, &rec) else {
+            return color_from_emission;
         };
+
+        let on_light = Point3::new(
+            Random::random_range(213.0..343.0),
+            554.0,
+            Random::random_range(227.0..332.0),
+        );
+        let to_light = on_light - rec.p;
+        let distance_squared = to_light.length_squared();
+        let to_light = UnitVec3::from_vec3(to_light).unwrap();
+
+        if Vec3::dot(to_light.as_inner(), &rec.normal) < 0.0 {
+            return color_from_emission;
+        }
+
+        let light_area = (343.0 - 213.0) * (332.0 - 227.0);
+
+        let light_cosine = to_light.y().abs();
+
+        if light_cosine < 0.000001 {
+            return color_from_emission;
+        }
+
+        let pdf_value = distance_squared / (light_cosine * light_area);
+        let scattered = Ray::new_with_time(rec.p, to_light.into_inner(), *r.time());
+        
+
+        let scattering_pdf = rec.mat.scattering_pdf(r, &rec, &scattered);
+        let color_from_scatter =
+            (attenuation * scattering_pdf * self.ray_color(&scattered, depth - 1, world))
+                / pdf_value;
 
         color_from_emission + color_from_scatter
     }
