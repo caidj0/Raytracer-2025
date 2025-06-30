@@ -208,6 +208,7 @@ impl Camera {
 
                 let scattered = Ray::new_with_time(rec.p, mixed_pdf.generate(), *r.time());
                 let pdf_value = mixed_pdf.value(scattered.direction());
+                assert_ne!(pdf_value, 0.0);
 
                 let scattering_pdf = rec.mat.scattering_pdf(r, &rec, &scattered);
 

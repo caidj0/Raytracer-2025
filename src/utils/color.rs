@@ -6,6 +6,8 @@ pub type Color = Vec3;
 
 impl Color {
     pub fn to_rgb(&self) -> [u8; 3] {
+        assert!(!self.e().iter().any(|&x| x.is_nan()));
+
         Srgb::from_linear(LinSrgb::from(self.e())).into()
     }
 

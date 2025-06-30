@@ -1,4 +1,10 @@
-use crate::{aabb::AABB, hit::Hittable, utils::interval::Interval};
+use rand::seq::IndexedRandom;
+
+use crate::{
+    aabb::AABB,
+    hit::Hittable,
+    utils::{interval::Interval, random::Random},
+};
 
 #[derive(Default)]
 pub struct Hittables {
@@ -41,5 +47,30 @@ impl Hittable for Hittables {
 
     fn bounding_box(&self) -> &AABB {
         &self.bbox
+    }
+
+    fn pdf_value(
+        &self,
+        origin: &crate::utils::vec3::Point3,
+        direction: &crate::utils::vec3::Vec3,
+    ) -> f64 {
+        let sum: f64 = self
+            .objects
+            .iter()
+            .map(|object| object.pdf_value(origin, direction))
+            .sum();
+
+        let ret = sum / self.objects.len() as f64;
+        assert!(!ret.is_nan(), "The sum of pdf is NaN!");
+
+        ret
+    }
+
+    fn random(&self, origin: &crate::utils::vec3::Point3) -> crate::utils::vec3::Vec3 {
+        let object = self
+            .objects
+            .choose(&mut Random::rng())
+            .expect("The collection of objects is empty!");
+        object.random(origin)
     }
 }

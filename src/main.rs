@@ -6,8 +6,11 @@ use raytracer::{
     camera::Camera,
     hit::{RotateY, Translate},
     hits::Hittables,
-    material::{DiffuseLight, Lambertian, Metal},
-    shapes::quad::{Quad, build_box},
+    material::{Dielectric, DiffuseLight, Lambertian, Metal},
+    shapes::{
+        quad::{Quad, build_box},
+        sphere::Sphere,
+    },
     utils::{
         color::Color,
         vec3::{Point3, Vec3},
@@ -16,7 +19,7 @@ use raytracer::{
 
 fn main() {
     let img = cornell_box();
-    let path_string = format!("output/{}/{}.png", "book3", "image5");
+    let path_string = format!("output/{}/{}.png", "book3", "image14");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -72,11 +75,11 @@ fn cornell_box() -> RgbImage {
         white.clone(),
     )));
 
-    let aluminum = Rc::new(Metal::new(Color::new(0.8, 0.85, 0.88), 0.0));
+    let _aluminum = Rc::new(Metal::new(Color::new(0.8, 0.85, 0.88), 0.0));
     let box1 = Box::new(build_box(
         Point3::ZERO,
         Point3::new(165.0, 330.0, 165.0),
-        aluminum,
+        white.clone(),
     ));
     let box1 = Box::new(RotateY::new(box1, 15.0));
     let box1 = Box::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0)));
@@ -87,22 +90,35 @@ fn cornell_box() -> RgbImage {
         white,
     ));
     let box2 = Box::new(RotateY::new(box2, -18.0));
-    let box2 = Box::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0)));
+    let _box2 = Box::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0)));
+
+    let glass = Rc::new(Dielectric::new(1.5));
 
     world.add(box1);
-    world.add(box2);
+    // world.add(box2);
+    world.add(Box::new(Sphere::new(
+        Point3::new(190.0, 90.0, 190.0),
+        90.0,
+        glass.clone(),
+    )));
 
-    let lights = Quad::new(
+    let mut lights = Hittables::default();
+    lights.add(Box::new(Quad::new(
         Point3::new(343.0, 554.0, 332.0),
         Vec3::new(-130.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -105.0),
         light,
-    );
+    )));
+    lights.add(Box::new(Sphere::new(
+        Point3::new(190.0, 90.0, 190.0),
+        90.0,
+        glass,
+    )));
 
     let mut camera = Camera::default();
     camera.aspect_ratio = 1.0;
     camera.image_width = 600;
-    camera.samples_per_pixel = 10;
+    camera.samples_per_pixel = 1000;
     camera.max_depth = 50;
     camera.background = Color::BLACK;
 

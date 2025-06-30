@@ -6,6 +6,8 @@ use crate::{
     material::Material,
     utils::{
         interval::Interval,
+        onb::OrthonormalBasis,
+        random::Random,
         ray::Ray,
         vec3::{Point3, UnitVec3, Vec3},
     },
@@ -57,6 +59,18 @@ impl Sphere {
 
         (u, v)
     }
+
+    fn random_to_sphere(radius: f64, distance_squared: f64) -> Vec3 {
+        let r1 = Random::f64();
+        let r2 = Random::f64();
+        let z = 1.0 + r2 * ((1.0 - radius * radius / distance_squared).sqrt() - 1.0);
+
+        let phi = 2.0 * PI * r1;
+        let x = phi.cos() * (1.0 - z * z).sqrt();
+        let y = phi.sin() * (1.0 - z * z).sqrt();
+
+        Vec3::new(x, y, z)
+    }
 }
 
 impl Hittable for Sphere {
@@ -95,6 +109,33 @@ impl Hittable for Sphere {
 
     fn bounding_box(&self) -> &AABB {
         &self.bbox
+    }
+
+    fn pdf_value(&self, origin: &Point3, direction: &Vec3) -> f64 {
+        // 只适用于静态球
+
+        let Some(_) = self.hit(
+            &Ray::new(*origin, *direction),
+            &Interval::new(0.001, f64::INFINITY),
+        ) else {
+            return 0.0;
+        };
+
+        let dist_squared = (self.center.at(0.0) - origin).length_squared();
+        let cos_theta_max = (1.0 - self.radius * self.radius / dist_squared).sqrt();
+        let solid_angle = 2.0 * PI * (1.0 - cos_theta_max);
+
+        1.0 / solid_angle
+    }
+
+    fn random(&self, origin: &Point3) -> Vec3 {
+        let direction = self.center.at(0.0) - origin;
+        let distance_squared = direction.length_squared();
+        let uvw = OrthonormalBasis::new(
+            &UnitVec3::from_vec3(direction).expect("The direction should be normalizable!"),
+        );
+
+        uvw.transform(Self::random_to_sphere(self.radius, distance_squared))
     }
 }
 

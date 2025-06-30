@@ -12,9 +12,8 @@ impl OrthonormalBasis {
             Vec3::new(1.0, 0.0, 0.0)
         };
 
-        // 这貌似是左手坐标系？
         let v = UnitVec3::from_vec3(Vec3::cross(normal, &a)).unwrap();
-        let u = UnitVec3::from_vec3_raw(Vec3::cross(normal, &v));
+        let u = UnitVec3::from_vec3_raw(Vec3::cross(&v, normal));
 
         OrthonormalBasis {
             axis: [u, v, *normal],

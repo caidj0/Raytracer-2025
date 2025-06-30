@@ -1,8 +1,14 @@
 use std::ops::{Range, RangeInclusive};
 
+use rand::rngs::ThreadRng;
+
 pub struct Random;
 
 impl Random {
+    pub fn rng() -> ThreadRng {
+        rand::rng()
+    }
+
     pub fn f64() -> f64 {
         rand::random()
     }
