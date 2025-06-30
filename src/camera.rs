@@ -4,15 +4,13 @@ use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 
 use crate::{
-    hit::Hittable,
-    hits::Hittables,
-    utils::{
+    hit::Hittable, hits::Hittables, pdf::{CosinePDF, HittablePDF, MixturePDF, PDF}, utils::{
         color::Color,
         interval::Interval,
         random::Random,
         ray::Ray,
         vec3::{Point3, UnitVec3, Vec3},
-    },
+    }
 };
 
 #[derive(Debug)]
@@ -82,7 +80,7 @@ impl Camera {
         }
     }
 
-    pub fn render(&mut self, world: &Hittables) -> RgbImage {
+    pub fn render(&mut self, world: &dyn Hittable, lights: &dyn Hittable) -> RgbImage {
         self.initilize();
 
         let mut img: RgbImage = ImageBuffer::new(self.image_width, self.image_height);
@@ -98,7 +96,7 @@ impl Camera {
                 for s_j in 0..self.sqrt_spp {
                     for s_i in 0..self.sqrt_spp {
                         pixel_color_sum +=
-                            self.ray_color(&self.get_ray(i, j, s_i, s_j), self.max_depth, world);
+                            self.ray_color(&self.get_ray(i, j, s_i, s_j), self.max_depth, world, lights);
                     }
                 }
                 let pixel_color = pixel_color_sum * self.pixel_sample_scale;
@@ -183,7 +181,7 @@ impl Camera {
         self.center + (p[0] * self.defocus_disk_u) + (p[1] * self.defocus_disk_v)
     }
 
-    fn ray_color(&self, r: &Ray, depth: u32, world: &dyn Hittable) -> Color {
+    fn ray_color(&self, r: &Ray, depth: u32, world: &dyn Hittable, lights: &dyn Hittable) -> Color {
         if depth == 0 {
             return Color::BLACK;
         }
@@ -198,35 +196,17 @@ impl Camera {
             return color_from_emission;
         };
 
-        let on_light = Point3::new(
-            Random::random_range(213.0..343.0),
-            554.0,
-            Random::random_range(227.0..332.0),
-        );
-        let to_light = on_light - rec.p;
-        let distance_squared = to_light.length_squared();
-        let to_light = UnitVec3::from_vec3(to_light).unwrap();
+        let p0 = HittablePDF::new(lights, rec.p);
+        let p1 = CosinePDF::new(&rec.normal);
+        let mixed_pdf = MixturePDF::new(&p0, &p1);
 
-        if Vec3::dot(to_light.as_inner(), &rec.normal) < 0.0 {
-            return color_from_emission;
-        }
-
-        let light_area = (343.0 - 213.0) * (332.0 - 227.0);
-
-        let light_cosine = to_light.y().abs();
-
-        if light_cosine < 0.000001 {
-            return color_from_emission;
-        }
-
-        let pdf_value = distance_squared / (light_cosine * light_area);
-        let scattered = Ray::new_with_time(rec.p, to_light.into_inner(), *r.time());
-        
+        let scattered = Ray::new_with_time(rec.p, mixed_pdf.generate(), *r.time());
+        let pdf_value = mixed_pdf.value(scattered.direction());
 
         let scattering_pdf = rec.mat.scattering_pdf(r, &rec, &scattered);
-        let color_from_scatter =
-            (attenuation * scattering_pdf * self.ray_color(&scattered, depth - 1, world))
-                / pdf_value;
+
+        let sample_color = self.ray_color(&scattered, depth - 1, world, lights);
+        let color_from_scatter = (attenuation * scattering_pdf * sample_color) / pdf_value;
 
         color_from_emission + color_from_scatter
     }

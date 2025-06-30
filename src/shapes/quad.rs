@@ -7,8 +7,7 @@ use crate::{
     material::Material,
     shapes::Planar,
     utils::{
-        interval::Interval,
-        vec3::{Point3, UnitVec3, Vec3},
+        interval::Interval, random::Random, ray::Ray, vec3::{Point3, UnitVec3, Vec3}
     },
 };
 
@@ -22,6 +21,7 @@ pub struct Quad {
     bbox: AABB,
     normal: UnitVec3,
     parm_d: f64,
+    area: f64,
 }
 
 impl Quad {
@@ -30,6 +30,7 @@ impl Quad {
         let normal = UnitVec3::from_vec3(n).expect("The length of normal should be normalizable!");
         let parm_d = normal.dot(&anchor);
         let w = n / n.length_squared();
+        let area = n.length();
         Quad {
             anchor,
             u,
@@ -39,6 +40,7 @@ impl Quad {
             bbox: Quad::cal_bounding_box(&anchor, &u, &v),
             normal,
             parm_d,
+            area,
         }
     }
 }
@@ -98,6 +100,22 @@ impl Hittable for Quad {
 
     fn bounding_box(&self) -> &AABB {
         &self.bbox
+    }
+    
+    fn pdf_value(&self, origin: &Point3, direction: &Vec3) -> f64 {
+        let Some(rec) = self.hit(&Ray::new(*origin, *direction), &Interval::new(0.001, f64::INFINITY)) else {
+            return 0.0;
+        };
+
+        let distance_squared = rec.t * rec.t * direction.length_squared();
+        let cosine = (direction.dot(&rec.normal) / direction.length()).abs();
+
+        distance_squared / (cosine * self.area)
+    }
+    
+    fn random(&self, origin: &Point3) -> Vec3 {
+        let p = self.anchor + (Random::f64() * self.u) + (Random::f64() * self.v);
+        return p - *origin;
     }
 }
 

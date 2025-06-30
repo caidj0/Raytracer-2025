@@ -8,3 +8,4 @@ pub mod shapes;
 pub mod texture;
 pub mod utils;
 pub mod volume;
+pub mod pdf;
