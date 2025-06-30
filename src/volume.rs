@@ -52,8 +52,6 @@ impl Hittable for ConstantMedium {
         r: &crate::utils::ray::Ray,
         interval: &crate::utils::interval::Interval,
     ) -> Option<crate::hit::HitRecord> {
-        // 如果要实现非凸的体积，需要对射线进行背面剔除，体积始终是封闭的
-
         let mut rec1 = self.boundary.hit(r, &Interval::UNIVERSE)?;
         let mut rec2 = self
             .boundary

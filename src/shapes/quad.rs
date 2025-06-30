@@ -12,6 +12,7 @@ use crate::{
     },
 };
 
+#[derive(Clone)]
 pub struct Quad {
     anchor: Point3,
     u: Vec3,
