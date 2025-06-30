@@ -3,22 +3,15 @@ use std::rc::Rc;
 use console::style;
 use image::RgbImage;
 use raytracer::{
-    bvh::BVH,
     camera::Camera,
     hit::{RotateY, Translate},
     hits::Hittables,
-    material::{Dielectric, DiffuseLight, Lambertian, Material, Metal},
-    shapes::{
-        quad::{build_box, Quad},
-        sphere::Sphere,
-    },
-    texture::{CheckerTexture, ImageTexture, NoiseTexture},
+    material::{DiffuseLight, Lambertian, Metal},
+    shapes::quad::{Quad, build_box},
     utils::{
         color::Color,
-        random::Random,
         vec3::{Point3, Vec3},
     },
-    volume::ConstantMedium,
 };
 
 fn main() {
@@ -58,7 +51,7 @@ fn cornell_box() -> RgbImage {
         Point3::new(343.0, 554.0, 332.0),
         Vec3::new(-130.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -105.0),
-        light,
+        light.clone(),
     )));
     world.add(Box::new(Quad::new(
         Point3::new(0.0, 0.0, 0.0),
@@ -79,10 +72,11 @@ fn cornell_box() -> RgbImage {
         white.clone(),
     )));
 
+    let aluminum = Rc::new(Metal::new(Color::new(0.8, 0.85, 0.88), 0.0));
     let box1 = Box::new(build_box(
         Point3::ZERO,
         Point3::new(165.0, 330.0, 165.0),
-        white.clone(),
+        aluminum,
     ));
     let box1 = Box::new(RotateY::new(box1, 15.0));
     let box1 = Box::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0)));
@@ -98,8 +92,12 @@ fn cornell_box() -> RgbImage {
     world.add(box1);
     world.add(box2);
 
-    let empty_material = Rc::new(Lambertian::new(Color::BLACK));
-    let lights = Quad::new(Point3::new(343.0, 554.0, 332.0), Vec3::new(-130.0, 0.0, 0.0), Vec3::new(0.0, 0.0, -105.0), empty_material);
+    let lights = Quad::new(
+        Point3::new(343.0, 554.0, 332.0),
+        Vec3::new(-130.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, -105.0),
+        light,
+    );
 
     let mut camera = Camera::default();
     camera.aspect_ratio = 1.0;

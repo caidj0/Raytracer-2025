@@ -2,20 +2,30 @@ use std::{f64::consts::PI, rc::Rc};
 
 use crate::{
     hit::HitRecord,
-    texture::{self, SolidColor, Texture},
+    pdf::{CosinePDF, PDF, SpherePDF},
+    texture::{SolidColor, Texture},
     utils::{
         color::Color,
-        onb::OrthonormalBasis,
         random::Random,
         ray::Ray,
-        vec3::{Point3, UnitVec3, Vec3},
+        vec3::{Point3, UnitVec3},
     },
 };
+
+pub enum PDForRay {
+    PDF(Box<dyn PDF>),
+    Ray(Ray),
+}
+
+pub struct ScatterRecord {
+    pub attenuation: Color,
+    pub pdf_or_ray: PDForRay,
+}
 
 pub trait Material {
     // 返回值依次为 三原色反射率、反射射线、该反射射线的 pdf
     #[allow(unused_variables)]
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray, f64)> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         None
     }
 
@@ -26,7 +36,7 @@ pub trait Material {
 
     #[allow(unused_variables)]
     fn scattering_pdf(&self, r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
-        0.0
+        unimplemented!("If using pdf, this function should be overloaded!")
     }
 }
 
@@ -41,36 +51,27 @@ impl Lambertian {
         }
     }
 
-    pub fn from_tex(texure: Rc<dyn Texture>) -> Lambertian {
-        Lambertian { texture: texure }
+    pub fn from_tex(texture: Rc<dyn Texture>) -> Lambertian {
+        Lambertian { texture }
     }
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray, f64)> {
-        let uvw = OrthonormalBasis::new(&rec.normal);
-        let scatter_direction = uvw.transform(UnitVec3::random_cosine_direction().into_inner());
-        let scatter_direction = UnitVec3::from_vec3(scatter_direction).unwrap();
+    fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
+        let attenuation = self.texture.value(rec.u, rec.v, &rec.p);
+        let pdf_ptr = Box::new(CosinePDF::new(&rec.normal));
 
-        Some((
-            self.texture.value(rec.u, rec.v, &rec.p),
-            Ray::new_with_time(rec.p, *scatter_direction.as_inner(), *r_in.time()),
-            Vec3::dot(&uvw.w(), &scatter_direction) / PI,
-        ))
+        Some(ScatterRecord {
+            attenuation,
+            pdf_or_ray: PDForRay::PDF(pdf_ptr),
+        })
     }
 
-    fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> f64 {
-        // let cos_theta = Vec3::dot(
-        //     &rec.normal,
-        //     &UnitVec3::from_vec3(*scattered.direction()).expect("The length of scattered ray should be normalizable!"),
-        // );
-        // if cos_theta < 0.0 {
-        //     0.0
-        // } else {
-        //     cos_theta / PI
-        // }
-
-        1.0 / (2.0 * PI)
+    fn scattering_pdf(&self, _r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
+        let cos_theta = rec
+            .normal
+            .dot(&UnitVec3::from_vec3(*scattered.direction()).unwrap());
+        if cos_theta < 0.0 { 0.0 } else { cos_theta / PI }
     }
 }
 
@@ -89,15 +90,17 @@ impl Metal {
 }
 
 impl Material for Metal {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray, f64)> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let raw_reflected = UnitVec3::from_vec3(*r_in.direction())?.reflect(&rec.normal);
         let reflected = UnitVec3::from_vec3(raw_reflected)?.into_inner()
             + (self.fuzz * UnitVec3::random_unit_vector().into_inner());
-        Some((
-            self.albedo,
-            Ray::new_with_time(rec.p, reflected, *r_in.time()),
-            todo!(),
-        ))
+
+        let attenuation = self.albedo;
+
+        Some(ScatterRecord {
+            attenuation,
+            pdf_or_ray: PDForRay::Ray(Ray::new_with_time(rec.p, reflected, *r_in.time())),
+        })
     }
 }
 
@@ -118,7 +121,9 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray, f64)> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
+        let attenuation = Color::WHITE;
+
         let ri = if rec.front_face {
             1.0 / self.refraction_index
         } else {
@@ -126,25 +131,23 @@ impl Material for Dielectric {
         };
         let unit_direction = UnitVec3::from_vec3(*r_in.direction()).unwrap();
         let cos_theta = (-unit_direction).dot(&rec.normal).min(1.0);
-        let sin_thera = (1.0 - cos_theta * cos_theta).sqrt();
-        let cannot_refract = ri * sin_thera > 1.0;
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+        let cannot_refract = ri * sin_theta > 1.0;
 
-        Some((
-            Color::WHITE,
-            Ray::new_with_time(
-                rec.p,
-                if cannot_refract || Dielectric::reflectance(cos_theta, ri) > Random::f64() {
-                    unit_direction.reflect(&rec.normal)
-                } else {
-                    unit_direction
-                        .refract(&rec.normal, ri)
-                        .unwrap()
-                        .into_inner()
-                },
-                *r_in.time(),
-            ),
-            todo!(),
-        ))
+        let direction = if cannot_refract || Dielectric::reflectance(cos_theta, ri) > Random::f64()
+        {
+            unit_direction.reflect(&rec.normal)
+        } else {
+            unit_direction
+                .refract(&rec.normal, ri)
+                .unwrap()
+                .into_inner()
+        };
+
+        Some(ScatterRecord {
+            attenuation,
+            pdf_or_ray: PDForRay::Ray(Ray::new_with_time(rec.p, direction, *r_in.time())),
+        })
     }
 }
 
@@ -191,16 +194,14 @@ impl Isotropic {
 }
 
 impl Material for Isotropic {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray, f64)> {
-        Some((
-            self.texture.value(rec.u, rec.v, &rec.p),
-            Ray::new_with_time(
-                rec.p,
-                UnitVec3::random_unit_vector().into_inner(),
-                *r_in.time(),
-            ),
-            1.0 / (4.0 * PI),
-        ))
+    fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
+        let attenuation = self.texture.value(rec.u, rec.v, &rec.p);
+        let pdf_ptr = Box::new(SpherePDF);
+
+        Some(ScatterRecord {
+            attenuation,
+            pdf_or_ray: PDForRay::PDF(pdf_ptr),
+        })
     }
 
     fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> f64 {

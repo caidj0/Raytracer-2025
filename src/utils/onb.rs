@@ -13,10 +13,12 @@ impl OrthonormalBasis {
         };
 
         // 这貌似是左手坐标系？
-        let v = UnitVec3::from_vec3(Vec3::cross(&normal, &a)).unwrap();
-        let u = UnitVec3::from_vec3_raw(Vec3::cross(&normal, &v));
+        let v = UnitVec3::from_vec3(Vec3::cross(normal, &a)).unwrap();
+        let u = UnitVec3::from_vec3_raw(Vec3::cross(normal, &v));
 
-        OrthonormalBasis { axis: [u, v, *normal] }
+        OrthonormalBasis {
+            axis: [u, v, *normal],
+        }
     }
 
     pub fn u(&self) -> &UnitVec3 {
@@ -29,7 +31,9 @@ impl OrthonormalBasis {
         &self.axis[2]
     }
 
-    pub fn transform(&self,v: Vec3) -> Vec3 {
-        v[0] * self.axis[0].as_inner() + v[1] * self.axis[1].as_inner() +  v[2] * self.axis[2].as_inner()
+    pub fn transform(&self, v: Vec3) -> Vec3 {
+        v[0] * self.axis[0].as_inner()
+            + v[1] * self.axis[1].as_inner()
+            + v[2] * self.axis[2].as_inner()
     }
 }

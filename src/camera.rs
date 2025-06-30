@@ -1,16 +1,17 @@
-use std::f64::consts::PI;
-
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 
 use crate::{
-    hit::Hittable, hits::Hittables, pdf::{CosinePDF, HittablePDF, MixturePDF, PDF}, utils::{
+    hit::Hittable,
+    material::PDForRay,
+    pdf::{HittablePDF, MixturePDF, PDF},
+    utils::{
         color::Color,
         interval::Interval,
         random::Random,
         ray::Ray,
         vec3::{Point3, UnitVec3, Vec3},
-    }
+    },
 };
 
 #[derive(Debug)]
@@ -95,8 +96,12 @@ impl Camera {
                 let mut pixel_color_sum = Vec3::ZERO;
                 for s_j in 0..self.sqrt_spp {
                     for s_i in 0..self.sqrt_spp {
-                        pixel_color_sum +=
-                            self.ray_color(&self.get_ray(i, j, s_i, s_j), self.max_depth, world, lights);
+                        pixel_color_sum += self.ray_color(
+                            &self.get_ray(i, j, s_i, s_j),
+                            self.max_depth,
+                            world,
+                            lights,
+                        );
                     }
                 }
                 let pixel_color = pixel_color_sum * self.pixel_sample_scale;
@@ -192,21 +197,27 @@ impl Camera {
 
         let color_from_emission = rec.mat.emitted(r, &rec, rec.u, rec.v, &rec.p);
 
-        let Some((attenuation, scattered, pdf_value)) = rec.mat.scatter(r, &rec) else {
+        let Some(scatter_record) = rec.mat.scatter(r, &rec) else {
             return color_from_emission;
         };
 
-        let p0 = HittablePDF::new(lights, rec.p);
-        let p1 = CosinePDF::new(&rec.normal);
-        let mixed_pdf = MixturePDF::new(&p0, &p1);
+        let color_from_scatter = match scatter_record.pdf_or_ray {
+            PDForRay::PDF(pdf_ptr) => {
+                let light_ptr = HittablePDF::new(lights, rec.p);
+                let mixed_pdf = MixturePDF::new(pdf_ptr.as_ref(), &light_ptr);
 
-        let scattered = Ray::new_with_time(rec.p, mixed_pdf.generate(), *r.time());
-        let pdf_value = mixed_pdf.value(scattered.direction());
+                let scattered = Ray::new_with_time(rec.p, mixed_pdf.generate(), *r.time());
+                let pdf_value = mixed_pdf.value(scattered.direction());
 
-        let scattering_pdf = rec.mat.scattering_pdf(r, &rec, &scattered);
+                let scattering_pdf = rec.mat.scattering_pdf(r, &rec, &scattered);
 
-        let sample_color = self.ray_color(&scattered, depth - 1, world, lights);
-        let color_from_scatter = (attenuation * scattering_pdf * sample_color) / pdf_value;
+                let sample_color = self.ray_color(&scattered, depth - 1, world, lights);
+                (scatter_record.attenuation * scattering_pdf * sample_color) / pdf_value
+            }
+            PDForRay::Ray(skip_pdf_ray) => {
+                scatter_record.attenuation * self.ray_color(&skip_pdf_ray, depth - 1, world, lights)
+            }
+        };
 
         color_from_emission + color_from_scatter
     }

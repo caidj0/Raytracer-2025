@@ -48,12 +48,14 @@ pub trait Hittable {
 
     fn bounding_box(&self) -> &AABB;
 
+    #[allow(unused_variables)]
     fn pdf_value(&self, origin: &Point3, direction: &Vec3) -> f64 {
-        0.0
+        unimplemented!()
     }
 
+    #[allow(unused_variables)]
     fn random(&self, origin: &Point3) -> Vec3 {
-        Vec3::new(1.0, 0.0, 0.0)
+        unimplemented!()
     }
 }
 

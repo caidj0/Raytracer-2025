@@ -7,7 +7,10 @@ use crate::{
     material::Material,
     shapes::Planar,
     utils::{
-        interval::Interval, random::Random, ray::Ray, vec3::{Point3, UnitVec3, Vec3}
+        interval::Interval,
+        random::Random,
+        ray::Ray,
+        vec3::{Point3, UnitVec3, Vec3},
     },
 };
 
@@ -101,9 +104,12 @@ impl Hittable for Quad {
     fn bounding_box(&self) -> &AABB {
         &self.bbox
     }
-    
+
     fn pdf_value(&self, origin: &Point3, direction: &Vec3) -> f64 {
-        let Some(rec) = self.hit(&Ray::new(*origin, *direction), &Interval::new(0.001, f64::INFINITY)) else {
+        let Some(rec) = self.hit(
+            &Ray::new(*origin, *direction),
+            &Interval::new(0.001, f64::INFINITY),
+        ) else {
             return 0.0;
         };
 
@@ -112,10 +118,10 @@ impl Hittable for Quad {
 
         distance_squared / (cosine * self.area)
     }
-    
+
     fn random(&self, origin: &Point3) -> Vec3 {
         let p = self.anchor + (Random::f64() * self.u) + (Random::f64() * self.v);
-        return p - *origin;
+        p - *origin
     }
 }
 
