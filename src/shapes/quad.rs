@@ -51,13 +51,13 @@ impl<'a> Planar for Quad<'a> {
         let bbox_diagonal1 = AABB::from_points(*anchor, anchor + u + v);
         let bbox_diagonal2 = AABB::from_points(anchor + u, anchor + v);
 
-        AABB::union(&bbox_diagonal1, &bbox_diagonal2)
+        AABB::union(bbox_diagonal1, bbox_diagonal2)
     }
 
     fn is_interior(a: f64, b: f64) -> Option<(f64, f64)> {
-        let unit_interval = Interval::new(0.0, 1.0);
+        const UNIT_INTERVAL: Interval = Interval::new(0.0, 1.0);
 
-        if !unit_interval.contains(a) || !unit_interval.contains(b) {
+        if !UNIT_INTERVAL.contains(a) || !UNIT_INTERVAL.contains(b) {
             None
         } else {
             Some((a, b))
@@ -119,7 +119,7 @@ impl<'a> Hittable for Quad<'a> {
 
     fn random(&self, origin: &Point3) -> Vec3 {
         let p = self.anchor + (Random::f64() * self.u) + (Random::f64() * self.v);
-        p - *origin
+        p - origin
     }
 }
 

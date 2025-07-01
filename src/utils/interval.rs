@@ -7,7 +7,7 @@ pub struct Interval {
 }
 
 impl Interval {
-    pub fn new(a: f64, b: f64) -> Interval {
+    pub const fn new(a: f64, b: f64) -> Interval {
         Interval {
             min: f64::min(a, b),
             max: f64::max(a, b),
@@ -55,7 +55,7 @@ impl Interval {
         }
     }
 
-    pub fn union(&self, rhs: &Interval) -> Interval {
+    pub fn union(self, rhs: Interval) -> Interval {
         Interval {
             min: f64::min(self.min, rhs.min),
             max: f64::max(self.max, rhs.max),

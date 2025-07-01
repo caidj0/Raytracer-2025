@@ -25,7 +25,7 @@ impl<'a> Hittables<'a> {
     }
 
     pub fn add(&mut self, object: Box<dyn Hittable + 'a>) {
-        self.bbox = self.bbox.union(object.bounding_box());
+        self.bbox = self.bbox.union(*object.bounding_box());
         self.objects.push(object);
     }
 }

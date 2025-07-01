@@ -16,7 +16,7 @@ impl<'a> BVH<'a> {
     pub fn from_vec(mut objects: Vec<Box<dyn Hittable + 'a>>) -> BVH<'a> {
         let bbox = objects
             .iter()
-            .fold(AABB::EMPTY, |x, y| AABB::union(&x, y.bounding_box()));
+            .fold(AABB::EMPTY, |x, y| AABB::union(x, *y.bounding_box()));
 
         let axis = bbox.longest_axis();
 

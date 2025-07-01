@@ -46,7 +46,7 @@ impl<'a> Sphere<'a> {
             center,
             radius: f64::max(0.0, radius),
             mat,
-            bbox: AABB::union(&box1, &box2),
+            bbox: AABB::union(box1, box2),
         }
     }
 

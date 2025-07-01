@@ -78,11 +78,11 @@ impl AABB {
         }
     }
 
-    pub fn union(&self, rhs: &AABB) -> AABB {
+    pub fn union(self, rhs: AABB) -> AABB {
         AABB {
-            x: Interval::union(&self.x, &rhs.x),
-            y: Interval::union(&self.y, &rhs.y),
-            z: Interval::union(&self.z, &rhs.z),
+            x: Interval::union(self.x, rhs.x),
+            y: Interval::union(self.y, rhs.y),
+            z: Interval::union(self.z, rhs.z),
         }
     }
 
@@ -205,7 +205,7 @@ mod tests {
     fn test_union() {
         let aabb1 = AABB::from_points(Point3::new(0.0, 0.0, 0.0), Point3::new(1.0, 1.0, 1.0));
         let aabb2 = AABB::from_points(Point3::new(1.0, 1.0, 1.0), Point3::new(2.0, 2.0, 2.0));
-        let union = aabb1.union(&aabb2);
+        let union = aabb1.union(aabb2);
 
         assert_eq!(union.x.min(), &0.0);
         assert_eq!(union.x.max(), &2.0);

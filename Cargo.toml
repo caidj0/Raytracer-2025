@@ -10,6 +10,7 @@ indicatif = "0.17.12"
 rand = "0.9.1"
 palette = "0.7.6"
 rayon = "1.10.0"
+tobj = "4.0.3"
 
 [profile.dev]
 opt-level = 1

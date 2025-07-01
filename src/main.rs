@@ -20,7 +20,7 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 2 {
+    let img = match 3 {
         0 => cornell_box(),
         1 => final_scene(400, 250, 4),
         _ => final_scene(800, 10000, 40),
