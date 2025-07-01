@@ -55,7 +55,7 @@ impl<'a> Planar for Triangle<'a> {
     fn is_interior(a: f64, b: f64) -> Option<(f64, f64)> {
         const UNIT_INTERVAL: Interval = Interval::new(0.0, 1.0);
 
-        if UNIT_INTERVAL.contains(a + b) {
+        if UNIT_INTERVAL.contains(a) && UNIT_INTERVAL.contains(b) && UNIT_INTERVAL.contains(a + b) {
             Some((a, b))
         } else {
             None

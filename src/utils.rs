@@ -3,6 +3,7 @@ pub mod image;
 pub mod interval;
 pub mod onb;
 pub mod perlin;
+pub mod quaternion;
 pub mod random;
 pub mod ray;
 pub mod vec3;

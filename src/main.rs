@@ -3,16 +3,18 @@ use image::RgbImage;
 use raytracer::{
     bvh::BVH,
     camera::Camera,
-    hit::{RotateY, Translate},
     hits::Hittables,
     material::{Dielectric, DiffuseLight, EmptyMaterial, Lambertian, Metal},
     shapes::{
+        Transform,
         quad::{Quad, build_box},
         sphere::Sphere,
+        triangle::Triangle,
     },
     texture::{ImageTexture, NoiseTexture, SolidColor},
     utils::{
         color::Color,
+        quaternion::Quaternion,
         random::Random,
         vec3::{Point3, Vec3},
     },
@@ -20,7 +22,7 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 3 {
+    let img = match 1 {
         0 => cornell_box(),
         1 => final_scene(400, 250, 4),
         _ => final_scene(800, 10000, 40),
@@ -153,9 +155,11 @@ fn final_scene(image_width: u32, samples_per_pixel: usize, max_depth: u32) -> Rg
         )));
     }
 
-    world.add(Box::new(Translate::new(
-        Box::new(RotateY::new(Box::new(BVH::new(boxes2)), 15.0)),
-        Vec3::new(-100.0, 270.0, 395.0),
+    world.add(Box::new(Transform::new(
+        Box::new(BVH::new(boxes2)),
+        Some(Vec3::new(-100.0, 270.0, 395.0)),
+        Some(Quaternion::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), 15.0)),
+        None,
     )));
 
     let mut lights = Hittables::default();
@@ -215,7 +219,7 @@ fn cornell_box() -> RgbImage {
         Vec3::new(0.0, 0.0, 555.0),
         &red,
     )));
-    world.add(Box::new(Quad::new(
+    world.add(Box::new(Triangle::new(
         Point3::new(343.0, 554.0, 332.0),
         Vec3::new(-130.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -105.0),
@@ -245,34 +249,34 @@ fn cornell_box() -> RgbImage {
         Point3::new(165.0, 330.0, 165.0),
         &white,
     ));
-    let box1 = Box::new(RotateY::new(box1, 15.0));
-    let box1 = Box::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0)));
+    let box1 = Box::new(Transform::new(
+        box1,
+        Some(Vec3::new(265.0, 0.0, 295.0)),
+        Some(Quaternion::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), 15.0)),
+        None,
+    ));
+
     world.add(box1);
 
-    let glass = Dielectric::new(1.5);
-    world.add(Box::new(Sphere::new(
-        Point3::new(190.0, 90.0, 190.0),
-        90.0,
-        &glass,
-    )));
+    // let glass = Dielectric::new(1.5);
+    // world.add(Box::new(Sphere::new(
+    //     Point3::new(190.0, 90.0, 190.0),
+    //     90.0,
+    //     &glass,
+    // )));
 
-    lights.add(Box::new(Quad::new(
+    lights.add(Box::new(Triangle::new(
         Point3::new(343.0, 554.0, 332.0),
         Vec3::new(-130.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -105.0),
         &light,
     )));
-    lights.add(Box::new(Sphere::new(
-        Point3::new(190.0, 90.0, 190.0),
-        90.0,
-        &glass,
-    )));
 
     let mut camera = Camera::default();
     camera.aspect_ratio = 1.0;
-    camera.image_width = 600;
-    camera.samples_per_pixel = 1000;
-    camera.max_depth = 50;
+    camera.image_width = 300;
+    camera.samples_per_pixel = 10;
+    camera.max_depth = 10;
     camera.background = Color::BLACK;
 
     camera.vertical_fov_in_degrees = 40.0;

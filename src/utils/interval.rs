@@ -1,4 +1,4 @@
-use std::ops::{Add, Range};
+use std::ops::{Add, Mul, Range};
 
 #[derive(Debug, PartialEq, Default, Clone, Copy)]
 pub struct Interval {
@@ -90,10 +90,32 @@ impl Add<f64> for Interval {
 impl Add<Interval> for f64 {
     type Output = Interval;
 
-    fn add(self, displacement: Interval) -> Self::Output {
+    fn add(self, interval: Interval) -> Self::Output {
         Interval {
-            min: displacement.min + self,
-            max: displacement.max + self,
+            min: interval.min + self,
+            max: interval.max + self,
+        }
+    }
+}
+
+impl Mul<f64> for Interval {
+    type Output = Interval;
+
+    fn mul(self, scale: f64) -> Self::Output {
+        Interval {
+            min: self.min * scale,
+            max: self.max * scale,
+        }
+    }
+}
+
+impl Mul<Interval> for f64 {
+    type Output = Interval;
+
+    fn mul(self, interval: Interval) -> Self::Output {
+        Interval {
+            min: interval.min * self,
+            max: interval.max * self,
         }
     }
 }

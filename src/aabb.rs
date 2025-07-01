@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::ops::{Add, Mul};
 
 use crate::utils::{
     interval::Interval,
@@ -25,6 +25,19 @@ impl AABB {
             z: Interval::new(a[2], b[2]),
         }
         .pad_to_minimums()
+    }
+
+    pub fn all_points(&self) -> [Point3; 8] {
+        [
+            Point3::new(*self.x.min(), *self.y.min(), *self.z.min()),
+            Point3::new(*self.x.min(), *self.y.min(), *self.z.max()),
+            Point3::new(*self.x.min(), *self.y.max(), *self.z.min()),
+            Point3::new(*self.x.min(), *self.y.max(), *self.z.max()),
+            Point3::new(*self.x.max(), *self.y.min(), *self.z.min()),
+            Point3::new(*self.x.max(), *self.y.min(), *self.z.max()),
+            Point3::new(*self.x.max(), *self.y.max(), *self.z.min()),
+            Point3::new(*self.x.max(), *self.y.max(), *self.z.max()),
+        ]
     }
 
     fn pad_to_minimums(self) -> AABB {
@@ -130,6 +143,30 @@ impl Add<AABB> for Vec3 {
             x: offset.x + self.x(),
             y: offset.y + self.y(),
             z: offset.z + self.z(),
+        }
+    }
+}
+
+impl Mul<Vec3> for AABB {
+    type Output = AABB;
+
+    fn mul(self, offset: Vec3) -> Self::Output {
+        AABB {
+            x: self.x * offset.x(),
+            y: self.y * offset.y(),
+            z: self.z * offset.z(),
+        }
+    }
+}
+
+impl Mul<AABB> for Vec3 {
+    type Output = AABB;
+
+    fn mul(self, offset: AABB) -> Self::Output {
+        AABB {
+            x: offset.x * self.x(),
+            y: offset.y * self.y(),
+            z: offset.z * self.z(),
         }
     }
 }

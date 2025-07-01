@@ -238,6 +238,7 @@ macro_rules! impl_op {
 impl_op!(Add, add, +);
 impl_op!(Sub, sub, -);
 impl_op!(Mul, mul, *);
+impl_op!(Div, div, /);
 
 impl Sum for Vec3 {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
