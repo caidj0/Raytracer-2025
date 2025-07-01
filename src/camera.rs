@@ -94,23 +94,18 @@ impl Camera {
 
         for j in 0..self.image_height {
             for i in 0..self.image_width {
-                let indexes = (0..self.sqrt_spp)
-                    .flat_map(|a| (0..self.sqrt_spp).map(|b| (a, b)).collect::<Vec<_>>())
-                    .collect::<Vec<_>>();
-
-                let pixel_color_sum: Color = indexes
-                    .par_iter()
-                    .map(|(s_i, s_j)| {
-                        self.ray_color(
-                            &self.get_ray(i, j, *s_i, *s_j),
+                let mut pixel_color = Color::BLACK;
+                for s_i in 0..self.sqrt_spp {
+                    for s_j in 0..self.sqrt_spp {
+                        pixel_color += self.ray_color(
+                            &self.get_ray(i, j, s_i, s_j),
                             self.max_depth,
                             world,
                             lights,
-                        )
-                    })
-                    .sum();
-
-                let pixel_color = pixel_color_sum * self.pixel_sample_scale;
+                        );
+                    }
+                }
+                let pixel_color = pixel_color * self.pixel_sample_scale;
                 let pixel = img.get_pixel_mut(i, j);
                 *pixel = image::Rgb(pixel_color.to_rgb());
             }
