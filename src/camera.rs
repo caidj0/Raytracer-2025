@@ -1,5 +1,4 @@
 use image::{ImageBuffer, RgbImage};
-use indicatif::ProgressBar;
 use rayon::prelude::*;
 
 use crate::{
@@ -86,14 +85,10 @@ impl Camera {
         self.initilize();
 
         let mut img: RgbImage = ImageBuffer::new(self.image_width, self.image_height);
-        let progress = if option_env!("CI").unwrap_or_default() == "true" {
-            ProgressBar::hidden()
-        } else {
-            ProgressBar::new((self.image_height * self.image_width) as u64)
-        };
 
-        for j in 0..self.image_height {
-            for i in 0..self.image_width {
+        img.enumerate_pixels_mut()
+            .par_bridge()
+            .for_each(|(i, j, pixel)| {
                 let mut pixel_color = Color::BLACK;
                 for s_i in 0..self.sqrt_spp {
                     for s_j in 0..self.sqrt_spp {
@@ -106,12 +101,8 @@ impl Camera {
                     }
                 }
                 let pixel_color = pixel_color * self.pixel_sample_scale;
-                let pixel = img.get_pixel_mut(i, j);
                 *pixel = image::Rgb(pixel_color.to_rgb());
-            }
-            progress.inc(1);
-        }
-        progress.finish();
+            });
 
         img
     }
