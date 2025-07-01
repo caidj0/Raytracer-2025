@@ -40,6 +40,10 @@ pub trait Material: Sync {
     }
 }
 
+pub struct EmptyMaterial;
+
+impl Material for EmptyMaterial {}
+
 pub struct Lambertian<'a> {
     texture: &'a dyn Texture,
 }
