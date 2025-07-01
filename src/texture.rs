@@ -1,8 +1,6 @@
-use std::rc::Rc;
-
 use crate::utils::{color::Color, image::Image, perlin::Perlin, vec3::Point3};
 
-pub trait Texture {
+pub trait Texture: Sync {
     fn value(&self, u: f64, v: f64, p: &Point3) -> Color;
 }
 
@@ -28,35 +26,27 @@ impl Texture for SolidColor {
     }
 }
 
-pub struct CheckerTexture {
+pub struct CheckerTexture<'a> {
     inv_scale: f64,
-    even: Rc<dyn Texture>,
-    odd: Rc<dyn Texture>,
+    even: &'a dyn Texture,
+    odd: &'a dyn Texture,
 }
 
-impl CheckerTexture {
+impl<'a> CheckerTexture<'a> {
     pub fn new(
         scale: f64,
-        even_texture: Rc<dyn Texture>,
-        odd_texture: Rc<dyn Texture>,
-    ) -> CheckerTexture {
+        even_texture: &'a dyn Texture,
+        odd_texture: &'a dyn Texture,
+    ) -> CheckerTexture<'a> {
         CheckerTexture {
             inv_scale: 1.0 / scale,
             even: even_texture,
             odd: odd_texture,
         }
     }
-
-    pub fn from_colors(scale: f64, even_color: Color, odd_color: Color) -> CheckerTexture {
-        CheckerTexture {
-            inv_scale: 1.0 / scale,
-            even: Rc::new(SolidColor::new(even_color)),
-            odd: Rc::new(SolidColor::new(odd_color)),
-        }
-    }
 }
 
-impl Texture for CheckerTexture {
+impl<'a> Texture for CheckerTexture<'a> {
     fn value(&self, u: f64, v: f64, p: &Point3) -> Color {
         let x_int = f64::floor(self.inv_scale * p.x()) as i32;
         let y_int = f64::floor(self.inv_scale * p.y()) as i32;

@@ -43,7 +43,7 @@ impl<'a> HitRecord<'a> {
     }
 }
 
-pub trait Hittable {
+pub trait Hittable: Sync {
     fn hit(&self, r: &Ray, interval: &Interval) -> Option<HitRecord>;
 
     fn bounding_box(&self) -> &AABB;
@@ -59,14 +59,14 @@ pub trait Hittable {
     }
 }
 
-pub struct Translate {
-    object: Box<dyn Hittable>,
+pub struct Translate<'a> {
+    object: Box<dyn Hittable + 'a>,
     offset: Vec3,
     bbox: AABB,
 }
 
-impl Translate {
-    pub fn new(object: Box<dyn Hittable>, offset: Vec3) -> Translate {
+impl<'a> Translate<'a> {
+    pub fn new(object: Box<dyn Hittable + 'a>, offset: Vec3) -> Translate<'a> {
         Translate {
             bbox: *object.bounding_box() + offset,
             object,
@@ -75,7 +75,7 @@ impl Translate {
     }
 }
 
-impl Hittable for Translate {
+impl<'a> Hittable for Translate<'a> {
     fn hit(&self, r: &Ray, interval: &Interval) -> Option<HitRecord> {
         let offset_r = Ray::new_with_time(r.origin() - self.offset, *r.direction(), *r.time());
 
@@ -91,15 +91,15 @@ impl Hittable for Translate {
     }
 }
 
-pub struct RotateY {
-    object: Box<dyn Hittable>,
+pub struct RotateY<'a> {
+    object: Box<dyn Hittable + 'a>,
     sin_theta: f64,
     cos_theta: f64,
     bbox: AABB,
 }
 
-impl RotateY {
-    pub fn new(object: Box<dyn Hittable>, angle_in_degrees: f64) -> RotateY {
+impl<'a> RotateY<'a> {
+    pub fn new(object: Box<dyn Hittable + 'a>, angle_in_degrees: f64) -> RotateY<'a> {
         let radians = angle_in_degrees.to_radians();
         let sin_theta = radians.sin();
         let cos_theta = radians.cos();
@@ -168,7 +168,7 @@ impl RotateY {
     }
 }
 
-impl Hittable for RotateY {
+impl<'a> Hittable for RotateY<'a> {
     fn hit(&self, r: &Ray, interval: &Interval) -> Option<HitRecord> {
         let transform = |p: Point3, cos_theta: f64, sin_theta: f64| {
             Point3::new(

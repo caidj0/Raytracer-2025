@@ -5,10 +5,11 @@ edition = "2024"
 
 [dependencies]
 image = "0.25.6"
-console = "0.15.11"
-indicatif = "0.17.11"
+console = "0.16.0"
+indicatif = "0.17.12"
 rand = "0.9.1"
 palette = "0.7.6"
+rayon = "1.10.0"
 
 [profile.dev]
 opt-level = 1

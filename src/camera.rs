@@ -1,5 +1,6 @@
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
+use rayon::prelude::*;
 
 use crate::{
     hit::Hittable,
@@ -93,17 +94,15 @@ impl Camera {
 
         for j in 0..self.image_height {
             for i in 0..self.image_width {
-                let mut pixel_color_sum = Vec3::ZERO;
-                for s_j in 0..self.sqrt_spp {
-                    for s_i in 0..self.sqrt_spp {
-                        pixel_color_sum += self.ray_color(
-                            &self.get_ray(i, j, s_i, s_j),
-                            self.max_depth,
-                            world,
-                            lights,
-                        );
-                    }
-                }
+                let pixel_color_sum: Color = (0..(self.sqrt_spp * self.sqrt_spp))
+                    .into_par_iter()
+                    .map(|s| {
+                        let s_i = s / self.sqrt_spp;
+                        let s_j = s % self.sqrt_spp;
+                        self.ray_color(&self.get_ray(i, j, s_i, s_j), self.max_depth, world, lights)
+                    })
+                    .sum();
+
                 let pixel_color = pixel_color_sum * self.pixel_sample_scale;
                 let pixel = img.get_pixel_mut(i, j);
                 *pixel = image::Rgb(pixel_color.to_rgb());

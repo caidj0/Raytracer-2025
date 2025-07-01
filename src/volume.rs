@@ -1,52 +1,37 @@
-use std::rc::Rc;
-
 use palette::num::ClampAssign;
 
 use crate::{
     hit::{HitRecord, Hittable},
-    material::{Isotropic, Material},
+    material::Isotropic,
     texture::Texture,
     utils::{
-        color::Color,
         interval::Interval,
         random::Random,
         vec3::{UnitVec3, Vec3},
     },
 };
 
-pub struct ConstantMedium {
+pub struct ConstantMedium<'a> {
     boundary: Box<dyn Hittable>,
     neg_inv_density: f64,
-    phase_function: Box<dyn Material>,
+    phase_function: Box<Isotropic<'a>>,
 }
 
-impl ConstantMedium {
+impl<'a> ConstantMedium<'a> {
     pub fn new_with_tex(
         boundary: Box<dyn Hittable>,
         density: f64,
-        texture: Rc<dyn Texture>,
-    ) -> ConstantMedium {
+        texture: &'a dyn Texture,
+    ) -> ConstantMedium<'a> {
         ConstantMedium {
             boundary,
             neg_inv_density: -1.0 / density,
             phase_function: Box::new(Isotropic::new(texture)),
         }
     }
-
-    pub fn new_with_color(
-        boundary: Box<dyn Hittable>,
-        density: f64,
-        albedo: Color,
-    ) -> ConstantMedium {
-        ConstantMedium {
-            boundary,
-            neg_inv_density: -1.0 / density,
-            phase_function: Box::new(Isotropic::from_color(albedo)),
-        }
-    }
 }
 
-impl Hittable for ConstantMedium {
+impl<'a> Hittable for ConstantMedium<'a> {
     fn hit(
         &self,
         r: &crate::utils::ray::Ray,

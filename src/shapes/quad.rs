@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
     aabb::AABB,
     hit::{HitRecord, Hittable},
@@ -15,20 +13,20 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct Quad {
+pub struct Quad<'a> {
     anchor: Point3,
     u: Vec3,
     v: Vec3,
     w: Vec3,
-    mat: Rc<dyn Material>,
+    mat: &'a dyn Material,
     bbox: AABB,
     normal: UnitVec3,
     parm_d: f64,
     area: f64,
 }
 
-impl Quad {
-    pub fn new(anchor: Point3, u: Vec3, v: Vec3, mat: Rc<dyn Material>) -> Quad {
+impl<'a> Quad<'a> {
+    pub fn new(anchor: Point3, u: Vec3, v: Vec3, mat: &'a dyn Material) -> Quad<'a> {
         let n = Vec3::cross(&u, &v);
         let normal = UnitVec3::from_vec3(n).expect("The length of normal should be normalizable!");
         let parm_d = normal.dot(&anchor);
@@ -48,7 +46,7 @@ impl Quad {
     }
 }
 
-impl Planar for Quad {
+impl<'a> Planar for Quad<'a> {
     fn cal_bounding_box(anchor: &Point3, u: &Vec3, v: &Vec3) -> AABB {
         let bbox_diagonal1 = AABB::from_points(*anchor, anchor + u + v);
         let bbox_diagonal2 = AABB::from_points(anchor + u, anchor + v);
@@ -67,7 +65,7 @@ impl Planar for Quad {
     }
 }
 
-impl Hittable for Quad {
+impl<'a> Hittable for Quad<'a> {
     fn hit(
         &self,
         r: &crate::utils::ray::Ray,
@@ -93,7 +91,7 @@ impl Hittable for Quad {
         Some(HitRecord::new(
             intersection,
             self.normal,
-            self.mat.as_ref(),
+            self.mat,
             t,
             u,
             v,
@@ -125,7 +123,7 @@ impl Hittable for Quad {
     }
 }
 
-pub fn build_box(a: Point3, b: Point3, mat: Rc<dyn Material>) -> Hittables {
+pub fn build_box<'a>(a: Point3, b: Point3, mat: &'a dyn Material) -> Hittables<'a> {
     let mut sides = Hittables::default();
 
     let min = Point3::from(
@@ -152,31 +150,31 @@ pub fn build_box(a: Point3, b: Point3, mat: Rc<dyn Material>) -> Hittables {
         Point3::new(min.x(), min.y(), max.z()),
         dx,
         dy,
-        mat.clone(),
+        mat,
     )));
     sides.add(Box::new(Quad::new(
         Point3::new(max.x(), min.y(), max.z()),
         -dz,
         dy,
-        mat.clone(),
+        mat,
     )));
     sides.add(Box::new(Quad::new(
         Point3::new(max.x(), min.y(), min.z()),
         -dx,
         dy,
-        mat.clone(),
+        mat,
     )));
     sides.add(Box::new(Quad::new(
         Point3::new(min.x(), min.y(), min.z()),
         dz,
         dy,
-        mat.clone(),
+        mat,
     )));
     sides.add(Box::new(Quad::new(
         Point3::new(min.x(), max.y(), max.z()),
         dx,
         -dz,
-        mat.clone(),
+        mat,
     )));
     sides.add(Box::new(Quad::new(
         Point3::new(min.x(), min.y(), min.z()),

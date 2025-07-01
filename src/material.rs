@@ -1,9 +1,9 @@
-use std::{f64::consts::PI, rc::Rc};
+use std::f64::consts::PI;
 
 use crate::{
     hit::HitRecord,
     pdf::{CosinePDF, PDF, SpherePDF},
-    texture::{SolidColor, Texture},
+    texture::Texture,
     utils::{
         color::Color,
         random::Random,
@@ -22,7 +22,7 @@ pub struct ScatterRecord {
     pub pdf_or_ray: PDForRay,
 }
 
-pub trait Material {
+pub trait Material: Sync {
     // 返回值依次为 三原色反射率、反射射线、该反射射线的 pdf
     #[allow(unused_variables)]
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
@@ -40,23 +40,17 @@ pub trait Material {
     }
 }
 
-pub struct Lambertian {
-    texture: Rc<dyn Texture>,
+pub struct Lambertian<'a> {
+    texture: &'a dyn Texture,
 }
 
-impl Lambertian {
-    pub fn new(albedo: Color) -> Lambertian {
-        Lambertian {
-            texture: Rc::new(SolidColor::new(albedo)),
-        }
-    }
-
-    pub fn from_tex(texture: Rc<dyn Texture>) -> Lambertian {
+impl<'a> Lambertian<'a> {
+    pub fn new(texture: &'a dyn Texture) -> Lambertian<'a> {
         Lambertian { texture }
     }
 }
 
-impl Material for Lambertian {
+impl<'a> Material for Lambertian<'a> {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let attenuation = self.texture.value(rec.u, rec.v, &rec.p);
         let pdf_ptr = Box::new(CosinePDF::new(&rec.normal));
@@ -151,23 +145,17 @@ impl Material for Dielectric {
     }
 }
 
-pub struct DiffuseLight {
-    texture: Rc<dyn Texture>,
+pub struct DiffuseLight<'a> {
+    texture: &'a dyn Texture,
 }
 
-impl DiffuseLight {
-    pub fn from_color(emit: Color) -> DiffuseLight {
-        DiffuseLight {
-            texture: Rc::new(SolidColor::new(emit)),
-        }
-    }
-
-    pub fn from_tex(texture: Rc<dyn Texture>) -> DiffuseLight {
+impl<'a> DiffuseLight<'a> {
+    pub fn new(texture: &'a dyn Texture) -> DiffuseLight<'a> {
         DiffuseLight { texture }
     }
 }
 
-impl Material for DiffuseLight {
+impl<'a> Material for DiffuseLight<'a> {
     fn emitted(&self, _ray: &Ray, rec: &HitRecord, u: f64, v: f64, p: &Point3) -> Color {
         if rec.front_face {
             self.texture.value(u, v, p)
@@ -177,23 +165,17 @@ impl Material for DiffuseLight {
     }
 }
 
-pub struct Isotropic {
-    texture: Rc<dyn Texture>,
+pub struct Isotropic<'a> {
+    texture: &'a dyn Texture,
 }
 
-impl Isotropic {
-    pub fn new(texture: Rc<dyn Texture>) -> Isotropic {
+impl<'a> Isotropic<'a> {
+    pub fn new(texture: &'a dyn Texture) -> Isotropic<'a> {
         Isotropic { texture }
     }
-
-    pub fn from_color(albedo: Color) -> Isotropic {
-        Isotropic {
-            texture: Rc::new(SolidColor::new(albedo)),
-        }
-    }
 }
 
-impl Material for Isotropic {
+impl<'a> Material for Isotropic<'a> {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let attenuation = self.texture.value(rec.u, rec.v, &rec.p);
         let pdf_ptr = Box::new(SpherePDF);

@@ -1,16 +1,15 @@
-use std::rc::Rc;
-
 use console::style;
 use image::RgbImage;
 use raytracer::{
     camera::Camera,
     hit::{RotateY, Translate},
     hits::Hittables,
-    material::{Dielectric, DiffuseLight, Lambertian, Metal},
+    material::{Dielectric, DiffuseLight, Lambertian},
     shapes::{
         quad::{Quad, build_box},
         sphere::Sphere,
     },
+    texture::SolidColor,
     utils::{
         color::Color,
         vec3::{Point3, Vec3},
@@ -32,87 +31,81 @@ fn main() {
 
 fn cornell_box() -> RgbImage {
     let mut world = Hittables::default();
+    let mut lights = Hittables::default();
 
-    let red = Rc::new(Lambertian::new(Color::new(0.65, 0.05, 0.05)));
-    let white = Rc::new(Lambertian::new(Color::new(0.73, 0.73, 0.73)));
-    let green = Rc::new(Lambertian::new(Color::new(0.12, 0.45, 0.15)));
-    let light = Rc::new(DiffuseLight::from_color(Color::new(15.0, 15.0, 15.0)));
+    let red_tex = SolidColor::new(Color::new(0.65, 0.05, 0.05));
+    let white_tex = SolidColor::new(Color::new(0.73, 0.73, 0.73));
+    let green_tex = SolidColor::new(Color::new(0.12, 0.45, 0.15));
+    let light_tex = SolidColor::new(Color::new(15.0, 15.0, 15.0));
+
+    let red = Lambertian::new(&red_tex);
+    let white = Lambertian::new(&white_tex);
+    let green = Lambertian::new(&green_tex);
+    let light = DiffuseLight::new(&light_tex);
 
     world.add(Box::new(Quad::new(
         Point3::new(555.0, 0.0, 0.0),
         Vec3::new(0.0, 555.0, 0.0),
         Vec3::new(0.0, 0.0, 555.0),
-        green,
+        &green,
     )));
     world.add(Box::new(Quad::new(
         Point3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 555.0, 0.0),
         Vec3::new(0.0, 0.0, 555.0),
-        red,
+        &red,
     )));
     world.add(Box::new(Quad::new(
         Point3::new(343.0, 554.0, 332.0),
         Vec3::new(-130.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -105.0),
-        light.clone(),
+        &light,
     )));
     world.add(Box::new(Quad::new(
         Point3::new(0.0, 0.0, 0.0),
         Vec3::new(555.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, 555.0),
-        white.clone(),
+        &white,
     )));
     world.add(Box::new(Quad::new(
         Point3::new(555.0, 555.0, 555.0),
         Vec3::new(-555.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -555.0),
-        white.clone(),
+        &white,
     )));
     world.add(Box::new(Quad::new(
         Point3::new(0.0, 0.0, 555.0),
         Vec3::new(555.0, 0.0, 0.0),
         Vec3::new(0.0, 555.0, 0.0),
-        white.clone(),
+        &white,
     )));
 
-    let _aluminum = Rc::new(Metal::new(Color::new(0.8, 0.85, 0.88), 0.0));
     let box1 = Box::new(build_box(
         Point3::ZERO,
         Point3::new(165.0, 330.0, 165.0),
-        white.clone(),
+        &white,
     ));
     let box1 = Box::new(RotateY::new(box1, 15.0));
     let box1 = Box::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0)));
-
-    let box2 = Box::new(build_box(
-        Point3::ZERO,
-        Point3::new(165.0, 165.0, 165.0),
-        white,
-    ));
-    let box2 = Box::new(RotateY::new(box2, -18.0));
-    let _box2 = Box::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0)));
-
-    let glass = Rc::new(Dielectric::new(1.5));
-
     world.add(box1);
-    // world.add(box2);
+
+    let glass = Dielectric::new(1.5);
     world.add(Box::new(Sphere::new(
         Point3::new(190.0, 90.0, 190.0),
         90.0,
-        glass.clone(),
+        &glass,
     )));
 
-    let mut lights = Hittables::default();
     lights.add(Box::new(Quad::new(
         Point3::new(343.0, 554.0, 332.0),
         Vec3::new(-130.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -105.0),
-        light,
+        &light,
     )));
     lights.add(Box::new(Sphere::new(
         Point3::new(190.0, 90.0, 190.0),
         90.0,
-        glass,
+        &glass,
     )));
 
     let mut camera = Camera::default();
@@ -129,5 +122,10 @@ fn cornell_box() -> RgbImage {
 
     camera.defocus_angle_in_degrees = 0.0;
 
-    camera.render(&world, &lights)
+    let img = camera.render(&world, &lights);
+
+    drop(world);
+    drop(lights);
+
+    img
 }

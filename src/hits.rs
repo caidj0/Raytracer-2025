@@ -7,13 +7,13 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct Hittables {
-    pub objects: Vec<Box<dyn Hittable>>,
+pub struct Hittables<'a> {
+    pub objects: Vec<Box<dyn Hittable + 'a>>,
     bbox: AABB,
 }
 
-impl Hittables {
-    pub fn new(object: Box<dyn Hittable>) -> Hittables {
+impl<'a> Hittables<'a> {
+    pub fn new(object: Box<dyn Hittable>) -> Hittables<'a> {
         Hittables {
             bbox: *object.bounding_box(),
             objects: vec![object],
@@ -24,13 +24,13 @@ impl Hittables {
         self.objects.clear();
     }
 
-    pub fn add(&mut self, object: Box<dyn Hittable>) {
+    pub fn add(&mut self, object: Box<dyn Hittable + 'a>) {
         self.bbox = self.bbox.union(object.bounding_box());
         self.objects.push(object);
     }
 }
 
-impl Hittable for Hittables {
+impl<'a> Hittable for Hittables<'a> {
     fn hit(
         &self,
         r: &crate::utils::ray::Ray,
