@@ -25,9 +25,9 @@ fn main() {
     let img = match 2 {
         0 => cornell_box(),
         1 => final_scene(400, 250, 4),
-        _ => final_scene(800, 10000, 40),
+        _ => final_scene(800, 5000, 40),
     };
-    let path_string = format!("output/{}/{}.png", "book3", "image14");
+    let path_string = format!("output/{}/{}.png", "book2", "image23");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -185,7 +185,7 @@ fn final_scene(image_width: u32, samples_per_pixel: usize, max_depth: u32) -> Rg
 
     camera.defocus_angle_in_degrees = 0.0;
 
-    let img = camera.render(&world, &lights);
+    let img = camera.render(&world, Some(&lights));
 
     drop(world);
     drop(lights);
@@ -286,7 +286,7 @@ fn cornell_box() -> RgbImage {
 
     camera.defocus_angle_in_degrees = 0.0;
 
-    let img = camera.render(&world, &lights);
+    let img = camera.render(&world, Some(&lights));
 
     drop(world);
     drop(lights);

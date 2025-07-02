@@ -1,4 +1,10 @@
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
+
 use image::{ImageBuffer, RgbImage};
+use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 
 use crate::{
@@ -81,11 +87,24 @@ impl Camera {
         }
     }
 
-    pub fn render(&mut self, world: &dyn Hittable, lights: &dyn Hittable) -> RgbImage {
+    pub fn render(&mut self, world: &dyn Hittable, lights: Option<&dyn Hittable>) -> RgbImage {
         self.initilize();
 
         let mut img: RgbImage = ImageBuffer::new(self.image_width, self.image_height);
 
+        let progress = if option_env!("CI").unwrap_or_default() == "true" {
+            ProgressBar::hidden()
+        } else {
+            let pb = ProgressBar::new((self.image_height * self.image_width) as u64);
+            pb.set_style(
+                ProgressStyle::default_bar()
+                    .template("[{elapsed_precise}] [{wide_bar}] {pos}/{len} ({eta_precise})")
+                    .unwrap(),
+            );
+            pb
+        };
+
+        let counter = Arc::new(AtomicUsize::new(0));
         img.enumerate_pixels_mut()
             .par_bridge()
             .for_each(|(i, j, pixel)| {
@@ -102,7 +121,11 @@ impl Camera {
                 }
                 let pixel_color = pixel_color * self.pixel_sample_scale;
                 *pixel = image::Rgb(pixel_color.to_rgb());
+                let prev = counter.fetch_add(1, Ordering::SeqCst);
+                progress.set_position((prev + 1) as u64);
             });
+
+        progress.finish();
 
         img
     }
@@ -178,7 +201,13 @@ impl Camera {
         self.center + (p[0] * self.defocus_disk_u) + (p[1] * self.defocus_disk_v)
     }
 
-    fn ray_color(&self, r: &Ray, depth: u32, world: &dyn Hittable, lights: &dyn Hittable) -> Color {
+    fn ray_color(
+        &self,
+        r: &Ray,
+        depth: u32,
+        world: &dyn Hittable,
+        lights: Option<&dyn Hittable>,
+    ) -> Color {
         if depth == 0 {
             return Color::BLACK;
         }
@@ -195,8 +224,13 @@ impl Camera {
 
         let color_from_scatter = match scatter_record.pdf_or_ray {
             PDForRay::PDF(pdf_ptr) => {
-                let light_ptr = HittablePDF::new(lights, rec.p);
-                let mixed_pdf = MixturePDF::new(pdf_ptr.as_ref(), &light_ptr);
+                let light_ptr =
+                    lights.map(|lights_hit| Box::new(HittablePDF::new(lights_hit, rec.p)));
+                let mixed_pdf: Box<dyn PDF> = if let Some(ref light) = light_ptr {
+                    Box::new(MixturePDF::new(pdf_ptr.as_ref(), light.as_ref()))
+                } else {
+                    pdf_ptr
+                };
 
                 let scattered = Ray::new_with_time(rec.p, mixed_pdf.generate(), *r.time());
                 let pdf_value = mixed_pdf.value(scattered.direction());

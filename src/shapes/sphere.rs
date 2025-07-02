@@ -123,6 +123,10 @@ impl<'a> Hittable for Sphere<'a> {
 
         let dist_squared = (self.center.at(0.0) - origin).length_squared();
         let cos_theta_max = (1.0 - self.radius * self.radius / dist_squared).sqrt();
+        if cos_theta_max.is_nan() {
+            // 此时是从内部入射到球面上
+            return 1.0 / (4.0 * PI);
+        }
         let solid_angle = 2.0 * PI * (1.0 - cos_theta_max);
 
         1.0 / solid_angle

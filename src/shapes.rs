@@ -8,6 +8,7 @@ use crate::{
     },
 };
 
+pub mod obj;
 pub mod quad;
 pub mod sphere;
 pub mod triangle;
