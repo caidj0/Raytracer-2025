@@ -250,7 +250,7 @@ impl Sum for Vec3 {
 pub struct UnitVec3(Vec3);
 
 impl UnitVec3 {
-    pub fn from_vec3_raw(vec: Vec3) -> UnitVec3 {
+    pub const fn from_vec3_raw(vec: Vec3) -> UnitVec3 {
         UnitVec3(vec)
     }
 

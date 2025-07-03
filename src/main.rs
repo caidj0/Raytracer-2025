@@ -31,7 +31,7 @@ fn main() {
         2 => final_scene(800, 5000, 40),
         _ => obj_scene(),
     };
-    let path_string = format!("output/{}/{}.png", "book2", "image23");
+    let path_string = format!("output/{}/{}.png", "book4", "image2");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -71,7 +71,7 @@ fn obj_scene() -> RgbImage {
     camera.max_depth = 10;
 
     camera.vertical_fov_in_degrees = 40.0;
-    camera.look_from = Point3::new(-10.0, 4.5, -10.0);
+    camera.look_from = Point3::new(-2.0, 0.9, -2.0);
     camera.look_at = Point3::new(0.0, 0.0, 0.0);
     camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
 

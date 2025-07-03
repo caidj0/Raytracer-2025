@@ -11,7 +11,7 @@ use crate::{
     material::{EmptyMaterial, Lambertian, Material},
     shapes::triangle::Triangle,
     texture::{ImageTexture, SolidColor, Texture},
-    utils::vec3::{Point3, Vec3},
+    utils::vec3::{Point3, UnitVec3, Vec3},
 };
 
 struct RemappedMaterial {
@@ -19,14 +19,29 @@ struct RemappedMaterial {
     pub tex_ori: Point3,
     pub tex_u: Vec3,
     pub tex_v: Vec3,
+    pub u_vec: UnitVec3,
+    pub v_vec: UnitVec3,
+    pub normal: Option<Arc<ImageTexture>>,
 }
 
 impl RemappedMaterial {
     fn remap_record<'a>(&self, rec: &'a HitRecord) -> HitRecord<'a> {
         let tex_coord = self.tex_ori + rec.u * self.tex_u + rec.v * self.tex_v;
+        let normal = if let Some(normal_tex) = &self.normal {
+            let normal_color = normal_tex.value(tex_coord.x(), tex_coord.y(), &rec.p);
+            let normal_color = normal_color * 2.0 - Vec3::new(1.0, 1.0, 1.0);
+
+            let normal_raw = self.u_vec.as_inner() * normal_color[0]
+                + self.v_vec.as_inner() * normal_color[1]
+                + rec.normal.as_inner() * normal_color[2];
+            UnitVec3::from_vec3(normal_raw).expect("The mapped normal can't normalized!")
+        } else {
+            rec.normal
+        };
+
         HitRecord {
             p: rec.p,
-            normal: rec.normal,
+            normal: normal,
             mat: rec.mat,
             t: rec.t,
             u: tex_coord.x(),
@@ -103,6 +118,7 @@ impl Wavefont {
 
         let mut obs = Hittables::default();
         let mut mats: Vec<Arc<dyn Material>> = vec![];
+        let mut normals: Vec<Option<Arc<ImageTexture>>> = vec![];
         if let Ok(materials) = materials {
             for material in materials {
                 let tex: Arc<dyn Texture> = if let Some(tex_name) = material.diffuse_texture {
@@ -113,14 +129,20 @@ impl Wavefont {
                     panic!("The material should at least have one diffuse!")
                 };
 
-                let mat = Arc::new(Lambertian::new(tex));
+                let mat: Arc<dyn Material> = Arc::new(Lambertian::new(tex));
                 mats.push(mat);
+
+                if let Some(tex_name) = material.normal_texture {
+                    normals.push(Some(Arc::new(ImageTexture::new(&tex_name))));
+                } else {
+                    normals.push(None);
+                }
             }
         }
 
         let empty_material = Arc::new(EmptyMaterial);
 
-        for object in objects {
+        for (object, normal) in objects.iter().zip(normals.iter()) {
             let mut v: Vec<Box<dyn Hittable>> = Vec::new();
             for indices in object.mesh.indices.chunks(3) {
                 let p1 = Wavefont::get_three_values(&object.mesh.positions, indices[0] as usize);
@@ -137,14 +159,33 @@ impl Wavefont {
                     empty_material.clone()
                 };
 
+                let tex_u = tex_p2 - tex_p1;
+                let tex_v = tex_p3 - tex_p1;
+
+                let ua = tex_v.y() / (-tex_u.y() * tex_v.x() + tex_u.x() * tex_v.y());
+                let ub = tex_u.y() / (tex_u.y() * tex_v.x() - tex_u.x() * tex_v.y());
+                let va = tex_v.x() / (tex_u.y() * tex_v.x() - tex_u.x() * tex_v.y());
+                let vb = tex_u.x() / (-tex_u.y() * tex_v.x() + tex_u.x() * tex_v.y());
+
+                let world_u = p2 - p1;
+                let world_v = p3 - p1;
+
+                let u_vec = UnitVec3::from_vec3(world_u * ua + world_v * ub)
+                    .expect("The u vec can't be normalized!");
+                let v_vec = UnitVec3::from_vec3(world_u * va + world_v * vb)
+                    .expect("The v vec can't be normalized!");
+
                 let mat = Arc::new(RemappedMaterial {
                     material: mat,
                     tex_ori: tex_p1,
-                    tex_u: tex_p2 - tex_p1,
-                    tex_v: tex_p3 - tex_p1,
+                    tex_u,
+                    tex_v,
+                    u_vec,
+                    v_vec,
+                    normal: normal.clone(),
                 });
 
-                v.push(Box::new(Triangle::new(p1, p2 - p1, p3 - p1, mat)));
+                v.push(Box::new(Triangle::new(p1, world_u, world_v, mat)));
             }
             if !v.is_empty() {
                 obs.add(Box::new(BVH::from_vec(v)));

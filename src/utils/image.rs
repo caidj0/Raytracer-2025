@@ -57,8 +57,8 @@ impl Image {
             return LinSrgb::from([1.0, 0.0, 1.0]);
         }
 
-        let x = x.clamp(0, self.width());
-        let y = y.clamp(0, self.height());
+        let x = x.clamp(0, self.width() - 1);
+        let y = y.clamp(0, self.height() - 1);
         self.img.as_ref().unwrap().get_pixel(x, y).to_luma();
         Srgb::from(self.img.as_ref().unwrap().get_pixel(x, y).0).into_linear()
     }
