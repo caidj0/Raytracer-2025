@@ -19,21 +19,21 @@ pub trait Planar {
     fn is_interior(a: f64, b: f64) -> Option<(f64, f64)>;
 }
 
-pub struct Transform<'a> {
-    object: Box<dyn Hittable + 'a>,
+pub struct Transform {
+    object: Box<dyn Hittable>,
     offset: Vec3,
     quaternion: Quaternion,
     scale: Vec3,
     bbox: AABB,
 }
 
-impl<'a> Transform<'a> {
+impl Transform {
     pub fn new(
-        object: Box<dyn Hittable + 'a>,
+        object: Box<dyn Hittable>,
         offset: Option<Vec3>,
         quaternion: Option<Quaternion>,
         scale: Option<Vec3>,
-    ) -> Transform<'a> {
+    ) -> Transform {
         let mut t = Transform {
             bbox: AABB::EMPTY,
             object,
@@ -83,7 +83,7 @@ impl<'a> Transform<'a> {
     }
 }
 
-impl<'a> Hittable for Transform<'a> {
+impl Hittable for Transform {
     fn hit(
         &self,
         r: &crate::utils::ray::Ray,

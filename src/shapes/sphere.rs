@@ -1,4 +1,4 @@
-use std::f64::consts::PI;
+use std::{f64::consts::PI, sync::Arc};
 
 use crate::{
     aabb::AABB,
@@ -14,15 +14,15 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct Sphere<'a> {
+pub struct Sphere {
     center: Ray,
     radius: f64,
-    mat: &'a dyn Material,
+    mat: Arc<dyn Material>,
     bbox: AABB,
 }
 
-impl<'a> Sphere<'a> {
-    pub fn new(static_center: Point3, radius: f64, mat: &'a dyn Material) -> Sphere<'a> {
+impl Sphere {
+    pub fn new(static_center: Point3, radius: f64, mat: Arc<dyn Material>) -> Sphere {
         let rvec = Vec3::new(radius, radius, radius);
         Sphere {
             center: Ray::new(static_center, Vec3::ZERO),
@@ -36,8 +36,8 @@ impl<'a> Sphere<'a> {
         center1: Point3,
         center2: Point3,
         radius: f64,
-        mat: &'a dyn Material,
-    ) -> Sphere<'a> {
+        mat: Arc<dyn Material>,
+    ) -> Sphere {
         let rvec = Vec3::new(radius, radius, radius);
         let center = Ray::new(center1, center2 - center1);
         let box1 = AABB::from_points(center.at(0.0) - rvec, center.at(0.0) + rvec);
@@ -73,7 +73,7 @@ impl<'a> Sphere<'a> {
     }
 }
 
-impl<'a> Hittable for Sphere<'a> {
+impl Hittable for Sphere {
     fn hit(
         &self,
         r: &crate::utils::ray::Ray,
@@ -103,7 +103,7 @@ impl<'a> Hittable for Sphere<'a> {
         let p = r.at(root);
         let outward_normal = UnitVec3::from_vec3_raw((p - current_center) / self.radius);
         let (u, v) = Sphere::get_sphere_uv(outward_normal);
-        let hr = HitRecord::new(p, outward_normal, self.mat, root, u, v, r);
+        let hr = HitRecord::new(p, outward_normal, self.mat.as_ref(), root, u, v, r);
         Some(hr)
     }
 

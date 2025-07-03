@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use console::style;
 use image::RgbImage;
 use raytracer::{
@@ -41,14 +43,14 @@ fn main() {
 }
 
 fn obj_scene() -> RgbImage {
-    let obj = Wavefont::new("monkey.obj").unwrap();
-    let light_tex = SolidColor::new(Color::new(3.0, 3.0, 3.0));
-    let light_material = DiffuseLight::new(&light_tex);
+    let obj = Wavefont::new("cube2.obj").unwrap();
+    let light_tex = Arc::new(SolidColor::new(Color::new(3.0, 3.0, 3.0)));
+    let light_material = Arc::new(DiffuseLight::new(light_tex));
     let light = Quad::new(
         Vec3::new(-1.0, 0.0, -1.0),
         Vec3::new(2.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, 2.0),
-        &light_material,
+        light_material,
     );
     let transfromed_light = Transform::new(
         Box::new(light),
@@ -66,8 +68,7 @@ fn obj_scene() -> RgbImage {
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 1920;
     camera.samples_per_pixel = 1000;
-    camera.max_depth = 50;
-    camera.background = Color::BLACK;
+    camera.max_depth = 10;
 
     camera.vertical_fov_in_degrees = 40.0;
     camera.look_from = Point3::new(10.0, 4.5, 10.0);
@@ -87,8 +88,8 @@ fn obj_scene() -> RgbImage {
 
 fn final_scene(image_width: u32, samples_per_pixel: usize, max_depth: u32) -> RgbImage {
     let mut boxes1 = Hittables::default();
-    let ground_tex = SolidColor::new(Color::new(0.48, 0.83, 0.53));
-    let ground = Lambertian::new(&ground_tex);
+    let ground_tex = Arc::new(SolidColor::new(Color::new(0.48, 0.83, 0.53)));
+    let ground = Arc::new(Lambertian::new(ground_tex));
 
     const BOXES_PER_SIDE: usize = 20;
     for i in 0..BOXES_PER_SIDE {
@@ -104,14 +105,14 @@ fn final_scene(image_width: u32, samples_per_pixel: usize, max_depth: u32) -> Rg
             boxes1.add(Box::new(build_box(
                 Point3::new(x0, y0, z0),
                 Point3::new(x1, y1, z1),
-                &ground,
+                ground.clone(),
             )));
         }
     }
 
-    let earth_tex = ImageTexture::new("earthmap.jpg");
-    let earth_material = Lambertian::new(&earth_tex);
-    let earth = Sphere::new(Point3::new(400.0, 200.0, 400.0), 100.0, &earth_material);
+    let earth_tex = Arc::new(ImageTexture::new("earthmap.jpg"));
+    let earth_material = Arc::new(Lambertian::new(earth_tex));
+    let earth = Sphere::new(Point3::new(400.0, 200.0, 400.0), 100.0, earth_material);
 
     let mut world = Hittables::default();
 
@@ -119,45 +120,45 @@ fn final_scene(image_width: u32, samples_per_pixel: usize, max_depth: u32) -> Rg
 
     world.add(Box::new(BVH::new(boxes1)));
 
-    let light_tex = SolidColor::new(Color::new(7.0, 7.0, 7.0));
-    let light_material = DiffuseLight::new(&light_tex);
+    let light_tex = Arc::new(SolidColor::new(Color::new(7.0, 7.0, 7.0)));
+    let light_material = Arc::new(DiffuseLight::new(light_tex));
     let light = Box::new(Quad::new(
         Point3::new(123.0, 554.0, 147.0),
         Vec3::new(300.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, 265.0),
-        &light_material,
+        light_material,
     ));
     world.add(light);
 
     let center1 = Point3::new(400.0, 400.0, 200.0);
     let center2 = center1 + Vec3::new(30.0, 0.0, 0.0);
-    let sphere_tex = SolidColor::new(Color::new(0.7, 0.3, 0.1));
-    let sphere_material = Lambertian::new(&sphere_tex);
+    let sphere_tex = Arc::new(SolidColor::new(Color::new(0.7, 0.3, 0.1)));
+    let sphere_material = Arc::new(Lambertian::new(sphere_tex));
     world.add(Box::new(Sphere::new_with_motion(
         center1,
         center2,
         50.0,
-        &sphere_material,
+        sphere_material,
     )));
 
-    let glass_material = Dielectric::new(1.5);
+    let glass_material = Arc::new(Dielectric::new(1.5));
     world.add(Box::new(Sphere::new(
         Point3::new(260.0, 150.0, 45.0),
         50.0,
-        &glass_material,
+        glass_material.clone(),
     )));
 
-    let metal_material = Metal::new(Color::new(0.8, 0.8, 0.9), 1.0);
+    let metal_material = Arc::new(Metal::new(Color::new(0.8, 0.8, 0.9), 1.0));
     world.add(Box::new(Sphere::new(
         Point3::new(0.0, 150.0, 145.0),
         50.0,
-        &metal_material,
+        metal_material,
     )));
 
     let boundary = Box::new(Sphere::new(
         Point3::new(360.0, 150.0, 145.0),
         70.0,
-        &glass_material,
+        glass_material,
     ));
 
     world.add(boundary);
@@ -165,40 +166,40 @@ fn final_scene(image_width: u32, samples_per_pixel: usize, max_depth: u32) -> Rg
     let boundary = Box::new(Sphere::new(
         Point3::new(360.0, 150.0, 145.0),
         70.0,
-        &EmptyMaterial,
+        Arc::new(EmptyMaterial),
     ));
 
-    let smoke_tex = SolidColor::new(Color::new(0.2, 0.4, 0.9));
+    let smoke_tex = Arc::new(SolidColor::new(Color::new(0.2, 0.4, 0.9)));
     world.add(Box::new(ConstantMedium::new_with_tex(
-        boundary, 0.2, &smoke_tex,
+        boundary, 0.2, smoke_tex,
     )));
     let boundary = Box::new(Sphere::new(
         Point3::new(0.0, 0.0, 0.0),
         5000.0,
-        &EmptyMaterial,
+        Arc::new(EmptyMaterial),
     ));
-    let white_tex = SolidColor::new(Color::WHITE);
+    let white_tex = Arc::new(SolidColor::new(Color::WHITE));
     world.add(Box::new(ConstantMedium::new_with_tex(
-        boundary, 0.0001, &white_tex,
+        boundary, 0.0001, white_tex,
     )));
 
-    let pertext = NoiseTexture::new(0.2);
-    let noise_tex = Lambertian::new(&pertext);
+    let pertext = Arc::new(NoiseTexture::new(0.2));
+    let noise_tex = Arc::new(Lambertian::new(pertext));
     world.add(Box::new(Sphere::new(
         Point3::new(220.0, 280.0, 300.0),
         80.0,
-        &noise_tex,
+        noise_tex,
     )));
 
     let mut boxes2 = Hittables::default();
-    let dim_white_color = SolidColor::new(Color::new(0.73, 0.73, 0.73));
-    let white = Lambertian::new(&dim_white_color);
+    let dim_white_color = Arc::new(SolidColor::new(Color::new(0.73, 0.73, 0.73)));
+    let white = Arc::new(Lambertian::new(dim_white_color));
     const NS: usize = 1000;
     for _ in 0..NS {
         boxes2.add(Box::new(Sphere::new(
             Point3::random_range(0.0..165.0),
             10.0,
-            &white,
+            white.clone(),
         )));
     }
 
@@ -214,7 +215,7 @@ fn final_scene(image_width: u32, samples_per_pixel: usize, max_depth: u32) -> Rg
         Point3::new(123.0, 554.0, 147.0),
         Vec3::new(300.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, 265.0),
-        &EmptyMaterial,
+        Arc::new(EmptyMaterial),
     )));
 
     let mut camera = Camera::default();
@@ -244,57 +245,57 @@ fn cornell_box() -> RgbImage {
     let mut world = Hittables::default();
     let mut lights = Hittables::default();
 
-    let red_tex = SolidColor::new(Color::new(0.65, 0.05, 0.05));
-    let white_tex = SolidColor::new(Color::new(0.73, 0.73, 0.73));
-    let green_tex = SolidColor::new(Color::new(0.12, 0.45, 0.15));
-    let light_tex = SolidColor::new(Color::new(15.0, 15.0, 15.0));
+    let red_tex = Arc::new(SolidColor::new(Color::new(0.65, 0.05, 0.05)));
+    let white_tex = Arc::new(SolidColor::new(Color::new(0.73, 0.73, 0.73)));
+    let green_tex = Arc::new(SolidColor::new(Color::new(0.12, 0.45, 0.15)));
+    let light_tex = Arc::new(SolidColor::new(Color::new(15.0, 15.0, 15.0)));
 
-    let red = Lambertian::new(&red_tex);
-    let white = Lambertian::new(&white_tex);
-    let green = Lambertian::new(&green_tex);
-    let light = DiffuseLight::new(&light_tex);
+    let red = Arc::new(Lambertian::new(red_tex));
+    let white = Arc::new(Lambertian::new(white_tex));
+    let green = Arc::new(Lambertian::new(green_tex));
+    let light = Arc::new(DiffuseLight::new(light_tex));
 
     world.add(Box::new(Quad::new(
         Point3::new(555.0, 0.0, 0.0),
         Vec3::new(0.0, 555.0, 0.0),
         Vec3::new(0.0, 0.0, 555.0),
-        &green,
+        green,
     )));
     world.add(Box::new(Quad::new(
         Point3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 555.0, 0.0),
         Vec3::new(0.0, 0.0, 555.0),
-        &red,
+        red,
     )));
     world.add(Box::new(Triangle::new(
         Point3::new(343.0, 554.0, 332.0),
         Vec3::new(-130.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -105.0),
-        &light,
+        light.clone(),
     )));
     world.add(Box::new(Quad::new(
         Point3::new(0.0, 0.0, 0.0),
         Vec3::new(555.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, 555.0),
-        &white,
+        white.clone(),
     )));
     world.add(Box::new(Quad::new(
         Point3::new(555.0, 555.0, 555.0),
         Vec3::new(-555.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -555.0),
-        &white,
+        white.clone(),
     )));
     world.add(Box::new(Quad::new(
         Point3::new(0.0, 0.0, 555.0),
         Vec3::new(555.0, 0.0, 0.0),
         Vec3::new(0.0, 555.0, 0.0),
-        &white,
+        white.clone(),
     )));
 
     let box1 = Box::new(build_box(
         Point3::ZERO,
         Point3::new(165.0, 330.0, 165.0),
-        &white,
+        white.clone(),
     ));
     let box1 = Box::new(Transform::new(
         box1,
@@ -316,7 +317,7 @@ fn cornell_box() -> RgbImage {
         Point3::new(343.0, 554.0, 332.0),
         Vec3::new(-130.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -105.0),
-        &light,
+        light,
     )));
 
     let mut camera = Camera::default();

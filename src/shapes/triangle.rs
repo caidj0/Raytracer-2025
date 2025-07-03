@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     aabb::AABB,
     hit::{HitRecord, Hittable},
@@ -11,20 +13,20 @@ use crate::{
     },
 };
 
-pub struct Triangle<'a> {
+pub struct Triangle {
     anchor: Point3,
     u: Vec3,
     v: Vec3,
     w: Vec3,
-    mat: &'a dyn Material,
+    mat: Arc<dyn Material>,
     bbox: AABB,
     normal: UnitVec3,
     parm_d: f64,
     area: f64,
 }
 
-impl<'a> Triangle<'a> {
-    pub fn new(anchor: Point3, u: Vec3, v: Vec3, mat: &'a dyn Material) -> Triangle<'a> {
+impl Triangle {
+    pub fn new(anchor: Point3, u: Vec3, v: Vec3, mat: Arc<dyn Material>) -> Triangle {
         let n = Vec3::cross(&u, &v);
         let normal = UnitVec3::from_vec3(n).expect("The length of normal should be normalizable!");
         let parm_d = normal.dot(&anchor);
@@ -44,7 +46,7 @@ impl<'a> Triangle<'a> {
     }
 }
 
-impl<'a> Planar for Triangle<'a> {
+impl Planar for Triangle {
     fn cal_bounding_box(anchor: &Point3, u: &Vec3, v: &Vec3) -> AABB {
         let bbox1 = AABB::from_points(*anchor, anchor + u);
         let bbox2 = AABB::from_points(*anchor, anchor + v);
@@ -63,7 +65,7 @@ impl<'a> Planar for Triangle<'a> {
     }
 }
 
-impl<'a> Hittable for Triangle<'a> {
+impl Hittable for Triangle {
     fn hit(&self, r: &Ray, interval: &Interval) -> Option<HitRecord> {
         // 从 Quad 的 Hit 复制而来
 
@@ -87,7 +89,7 @@ impl<'a> Hittable for Triangle<'a> {
         Some(HitRecord::new(
             intersection,
             self.normal,
-            self.mat,
+            self.mat.as_ref(),
             t,
             u,
             v,

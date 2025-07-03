@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use crate::utils::{color::Color, image::Image, perlin::Perlin, vec3::Point3};
 
-pub trait Texture: Sync {
+pub trait Texture: Send + Sync {
     fn value(&self, u: f64, v: f64, p: &Point3) -> Color;
 }
 
@@ -18,6 +20,12 @@ impl SolidColor {
             albedo: Color::new(red, green, bule),
         }
     }
+
+    pub fn from(color: [f64; 3]) -> SolidColor {
+        Self {
+            albedo: Color::from(color),
+        }
+    }
 }
 
 impl Texture for SolidColor {
@@ -26,18 +34,18 @@ impl Texture for SolidColor {
     }
 }
 
-pub struct CheckerTexture<'a> {
+pub struct CheckerTexture {
     inv_scale: f64,
-    even: &'a dyn Texture,
-    odd: &'a dyn Texture,
+    even: Arc<dyn Texture>,
+    odd: Arc<dyn Texture>,
 }
 
-impl<'a> CheckerTexture<'a> {
+impl CheckerTexture {
     pub fn new(
         scale: f64,
-        even_texture: &'a dyn Texture,
-        odd_texture: &'a dyn Texture,
-    ) -> CheckerTexture<'a> {
+        even_texture: Arc<dyn Texture>,
+        odd_texture: Arc<dyn Texture>,
+    ) -> CheckerTexture {
         CheckerTexture {
             inv_scale: 1.0 / scale,
             even: even_texture,
@@ -46,7 +54,7 @@ impl<'a> CheckerTexture<'a> {
     }
 }
 
-impl<'a> Texture for CheckerTexture<'a> {
+impl Texture for CheckerTexture {
     fn value(&self, u: f64, v: f64, p: &Point3) -> Color {
         let x_int = f64::floor(self.inv_scale * p.x()) as i32;
         let y_int = f64::floor(self.inv_scale * p.y()) as i32;

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use palette::num::ClampAssign;
 
 use crate::{
@@ -11,18 +13,18 @@ use crate::{
     },
 };
 
-pub struct ConstantMedium<'a> {
+pub struct ConstantMedium {
     boundary: Box<dyn Hittable>,
     neg_inv_density: f64,
-    phase_function: Box<Isotropic<'a>>,
+    phase_function: Box<Isotropic>,
 }
 
-impl<'a> ConstantMedium<'a> {
+impl ConstantMedium {
     pub fn new_with_tex(
         boundary: Box<dyn Hittable>,
         density: f64,
-        texture: &'a dyn Texture,
-    ) -> ConstantMedium<'a> {
+        texture: Arc<dyn Texture>,
+    ) -> ConstantMedium {
         ConstantMedium {
             boundary,
             neg_inv_density: -1.0 / density,
@@ -31,7 +33,7 @@ impl<'a> ConstantMedium<'a> {
     }
 }
 
-impl<'a> Hittable for ConstantMedium<'a> {
+impl Hittable for ConstantMedium {
     fn hit(
         &self,
         r: &crate::utils::ray::Ray,

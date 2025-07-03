@@ -2,18 +2,18 @@ use std::cmp::Ordering;
 
 use crate::{aabb::AABB, hit::Hittable, hits::Hittables, utils::interval::Interval};
 
-pub struct BVH<'a> {
-    left: Option<Box<dyn Hittable + 'a>>,
-    right: Option<Box<dyn Hittable + 'a>>,
+pub struct BVH {
+    left: Option<Box<dyn Hittable>>,
+    right: Option<Box<dyn Hittable>>,
     bbox: AABB,
 }
 
-impl<'a> BVH<'a> {
-    pub fn new(world: Hittables<'a>) -> BVH<'a> {
+impl BVH {
+    pub fn new(world: Hittables) -> BVH {
         BVH::from_vec(world.objects)
     }
 
-    pub fn from_vec(mut objects: Vec<Box<dyn Hittable + 'a>>) -> BVH<'a> {
+    pub fn from_vec(mut objects: Vec<Box<dyn Hittable>>) -> BVH {
         let bbox = objects
             .iter()
             .fold(AABB::EMPTY, |x, y| AABB::union(x, *y.bounding_box()));
@@ -53,7 +53,7 @@ impl<'a> BVH<'a> {
     }
 }
 
-impl<'a> Hittable for BVH<'a> {
+impl Hittable for BVH {
     fn hit(
         &self,
         r: &crate::utils::ray::Ray,
