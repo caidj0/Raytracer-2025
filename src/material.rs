@@ -4,12 +4,7 @@ use crate::{
     hit::HitRecord,
     pdf::{CosinePDF, PDF, SpherePDF},
     texture::Texture,
-    utils::{
-        color::Color,
-        random::Random,
-        ray::Ray,
-        vec3::{Point3, UnitVec3},
-    },
+    utils::{color::Color, random::Random, ray::Ray, vec3::UnitVec3},
 };
 
 pub enum PDForRay {
@@ -30,7 +25,7 @@ pub trait Material: Send + Sync {
     }
 
     #[allow(unused_variables)]
-    fn emitted(&self, r_in: &Ray, rec: &HitRecord, u: f64, v: f64, p: &Point3) -> Color {
+    fn emitted(&self, r_in: &Ray, rec: &HitRecord) -> Color {
         Color::BLACK
     }
 
@@ -179,9 +174,9 @@ impl DiffuseLight {
 }
 
 impl Material for DiffuseLight {
-    fn emitted(&self, _ray: &Ray, rec: &HitRecord, u: f64, v: f64, p: &Point3) -> Color {
+    fn emitted(&self, _ray: &Ray, rec: &HitRecord) -> Color {
         if rec.front_face {
-            self.texture.value(u, v, p)
+            self.texture.value(rec.u, rec.v, &rec.p)
         } else {
             Color::BLACK
         }

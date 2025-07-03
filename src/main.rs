@@ -43,7 +43,7 @@ fn main() {
 }
 
 fn obj_scene() -> RgbImage {
-    let obj = Wavefont::new("cube2.obj").unwrap();
+    let obj = Wavefont::new("uv_test_sphere.obj").unwrap();
     let light_tex = Arc::new(SolidColor::new(Color::new(3.0, 3.0, 3.0)));
     let light_material = Arc::new(DiffuseLight::new(light_tex));
     let light = Quad::new(
@@ -54,8 +54,8 @@ fn obj_scene() -> RgbImage {
     );
     let transfromed_light = Transform::new(
         Box::new(light),
-        Some(Vec3::new(0.0, 3.0, 0.0)),
-        Some(Quaternion::identity()),
+        Some(Vec3::new(0.0, 2.0, 0.0)),
+        Some(Quaternion::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), 20.0)),
         Some(Vec3::new(3.0, 3.0, 3.0)),
     );
 
@@ -71,7 +71,7 @@ fn obj_scene() -> RgbImage {
     camera.max_depth = 10;
 
     camera.vertical_fov_in_degrees = 40.0;
-    camera.look_from = Point3::new(10.0, 4.5, 10.0);
+    camera.look_from = Point3::new(-10.0, 4.5, -10.0);
     camera.look_at = Point3::new(0.0, 0.0, 0.0);
     camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
 
