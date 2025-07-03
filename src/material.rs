@@ -42,7 +42,27 @@ pub trait Material: Sync {
 
 pub struct EmptyMaterial;
 
-impl Material for EmptyMaterial {}
+impl Material for EmptyMaterial {
+    // 从 Lambertian 复制而来
+
+    fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
+        let attenuation = Color::new(0.75, 0.75, 0.75);
+        let pdf_ptr = Box::new(CosinePDF::new(&rec.normal));
+
+        Some(ScatterRecord {
+            attenuation,
+            pdf_or_ray: PDForRay::PDF(pdf_ptr),
+        })
+    }
+
+
+    fn scattering_pdf(&self, _r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
+        let cos_theta = rec
+            .normal
+            .dot(&UnitVec3::from_vec3(*scattered.direction()).unwrap());
+        if cos_theta < 0.0 { 0.0 } else { cos_theta / PI }
+    }
+}
 
 pub struct Lambertian<'a> {
     texture: &'a dyn Texture,

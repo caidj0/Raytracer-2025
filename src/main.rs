@@ -7,6 +7,7 @@ use raytracer::{
     material::{Dielectric, DiffuseLight, EmptyMaterial, Lambertian, Metal},
     shapes::{
         Transform,
+        obj::Wavefont,
         quad::{Quad, build_box},
         sphere::Sphere,
         triangle::Triangle,
@@ -22,10 +23,11 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 2 {
+    let img = match 3 {
         0 => cornell_box(),
         1 => final_scene(400, 250, 4),
-        _ => final_scene(800, 5000, 40),
+        2 => final_scene(800, 5000, 40),
+        _ => obj_scene(),
     };
     let path_string = format!("output/{}/{}.png", "book2", "image23");
     let path = std::path::Path::new(&path_string);
@@ -36,6 +38,51 @@ fn main() {
         style(path.to_str().unwrap()).yellow()
     );
     img.save(path).expect("Cannot save the image to the file");
+}
+
+fn obj_scene() -> RgbImage {
+    let obj = Wavefont::new("monkey.obj").unwrap();
+    let light_tex = SolidColor::new(Color::new(3.0, 3.0, 3.0));
+    let light_material = DiffuseLight::new(&light_tex);
+    let light = Quad::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        Vec3::new(2.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 2.0),
+        &light_material,
+    );
+    let transfromed_light = Transform::new(
+        Box::new(light),
+        Some(Vec3::new(0.0, 3.0, 0.0)),
+        Some(Quaternion::identity()),
+        Some(Vec3::new(3.0, 3.0, 3.0)),
+    );
+
+    let mut world = Hittables::default();
+    world.add(Box::new(obj));
+    world.add(Box::new(transfromed_light));
+
+    let mut camera = Camera::default();
+
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 1920;
+    camera.samples_per_pixel = 1000;
+    camera.max_depth = 50;
+    camera.background = Color::BLACK;
+
+    camera.vertical_fov_in_degrees = 40.0;
+    camera.look_from = Point3::new(10.0, 4.5, 10.0);
+    camera.look_at = Point3::new(0.0, 0.0, 0.0);
+    camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
+
+    camera.defocus_angle_in_degrees = 0.0;
+
+    camera.background = Color::new(0.1, 0.1, 0.1);
+
+    let img = camera.render(&world, None);
+
+    drop(world);
+
+    img
 }
 
 fn final_scene(image_width: u32, samples_per_pixel: usize, max_depth: u32) -> RgbImage {

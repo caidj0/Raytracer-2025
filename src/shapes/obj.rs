@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    bvh::BVH, hit::Hittable, hits::Hittables, material::EmptyMaterial, shapes::quad::Quad,
+    bvh::BVH, hit::Hittable, hits::Hittables, material::EmptyMaterial, shapes::triangle::Triangle,
     utils::vec3::Vec3,
 };
 
@@ -33,7 +33,6 @@ impl<'a> Wavefont<'a> {
     }
 
     fn get_position(positions: &[f64], index: usize) -> Vec3 {
-        let index = index - 1;
         let index = index * 3;
         Vec3::from(positions[index..(index + 3)].try_into().unwrap())
     }
@@ -50,7 +49,7 @@ impl<'a> Wavefont<'a> {
                 let p2 = Wavefont::get_position(&object.mesh.positions, vs[1] as usize);
                 let p3 = Wavefont::get_position(&object.mesh.positions, vs[2] as usize);
 
-                v.push(Box::new(Quad::new(p1, p2 - p1, p3 - p1, &EmptyMaterial)));
+                v.push(Box::new(Triangle::new(p1, p2 - p1, p3 - p1, &EmptyMaterial)));
             }
             obs.add(Box::new(BVH::from_vec(v)));
         }
