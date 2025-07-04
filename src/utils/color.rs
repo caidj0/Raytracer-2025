@@ -4,11 +4,35 @@ use crate::utils::vec3::Vec3;
 
 pub type Color = Vec3;
 
+#[derive(Debug)]
+pub enum ToonMap {
+    None,
+    ACES,
+}
+
 impl Color {
-    pub fn to_rgb(&self) -> [u8; 3] {
+    fn aces_tonemap(&self) -> Color {
+        const A: f64 = 2.51;
+        const B: Vec3 = Vec3::new(0.03, 0.03, 0.03);
+        const C: f64 = 2.43;
+        const D: Vec3 = Vec3::new(0.59, 0.59, 0.59);
+        const E: Vec3 = Vec3::new(0.14, 0.14, 0.14);
+        Vec3::clamp(
+            (self * (A * self + B)) / (self * (C * self + D) + E),
+            0.0,
+            1.0,
+        )
+    }
+
+    pub fn to_rgb(&self, toon_map: &ToonMap) -> [u8; 3] {
         assert!(!self.e().iter().any(|&x| x.is_nan()));
 
-        Srgb::from_linear(LinSrgb::from(self.e())).into()
+        let mapped_color = match toon_map {
+            ToonMap::None => *self,
+            ToonMap::ACES => self.aces_tonemap(),
+        };
+
+        Srgb::from_linear(LinSrgb::from(mapped_color.e())).into()
     }
 
     pub const BLACK: Color = Color::new(0.0, 0.0, 0.0);

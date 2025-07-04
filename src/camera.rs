@@ -14,7 +14,7 @@ use crate::{
     shapes::environment::Environment,
     texture::SolidColor,
     utils::{
-        color::Color,
+        color::{Color, ToonMap},
         interval::Interval,
         random::Random,
         ray::Ray,
@@ -37,6 +37,8 @@ pub struct Camera {
 
     pub defocus_angle_in_degrees: f64,
     pub focus_distance: f64,
+
+    pub toon_map: ToonMap,
 
     image_height: u32,
     sqrt_spp: u32,
@@ -67,6 +69,7 @@ impl Default for Camera {
             vec_up: Vec3::new(0.0, 1.0, 0.0),
             defocus_angle_in_degrees: 0.0,
             focus_distance: 10.0,
+            toon_map: ToonMap::None,
             image_height: Default::default(),
             sqrt_spp: Default::default(),
             recip_sqrt_spp: Default::default(),
@@ -124,7 +127,7 @@ impl Camera {
                     }
                 }
                 let pixel_color = pixel_color * self.pixel_sample_scale;
-                *pixel = image::Rgb(pixel_color.to_rgb());
+                *pixel = image::Rgb(pixel_color.to_rgb(&self.toon_map));
                 let prev = counter.fetch_add(1, Ordering::SeqCst);
                 progress.set_position((prev + 1) as u64);
             });

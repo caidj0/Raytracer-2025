@@ -3,12 +3,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use image::{ImageReader, Rgb32FImage};
-use palette::{LinSrgb, Srgb};
+use image::{ImageFormat, ImageReader, Rgb32FImage};
+use palette::Srgb;
 
 #[derive(Debug)]
 pub struct Image {
-    img: Option<Rgb32FImage>,
+    img: Option<(Rgb32FImage, ImageFormat)>,
 }
 
 impl Image {
@@ -37,39 +37,38 @@ impl Image {
         }
     }
 
-    fn load<P>(path: P) -> Option<Rgb32FImage>
+    fn load<P>(path: P) -> Option<(Rgb32FImage, ImageFormat)>
     where
         P: AsRef<Path>,
     {
         let ir = ImageReader::open(path).ok()?;
-        Some(ir.decode().ok()?.into_rgb32f())
+        let fmt = ir.format()?;
+        Some((ir.decode().ok()?.into_rgb32f(), fmt))
     }
 
     pub fn width(&self) -> u32 {
-        self.img.as_ref().map_or(0, |x| x.width())
+        self.img.as_ref().map_or(0, |x| x.0.width())
     }
 
     pub fn height(&self) -> u32 {
-        self.img.as_ref().map_or(0, |x| x.height())
+        self.img.as_ref().map_or(0, |x| x.0.height())
     }
 
-    pub fn pixel_data(&self, x: u32, y: u32) -> LinSrgb {
-        if self.img.is_none() {
-            return LinSrgb::from([1.0, 0.0, 1.0]);
-        }
-
-        let x = x.clamp(0, self.width() - 1);
-        let y = y.clamp(0, self.height() - 1);
-        Srgb::from(self.img.as_ref().unwrap().get_pixel(x, y).0).into_linear()
-    }
-
-    pub fn pixel_data_raw(&self, x: u32, y: u32) -> [f32; 3] {
-        if self.img.is_none() {
+    pub fn pixel_data(&self, x: u32, y: u32) -> [f32; 3] {
+        let Some((img, fmt)) = &self.img else {
             return [1.0, 0.0, 1.0];
-        }
+        };
 
         let x = x.clamp(0, self.width() - 1);
         let y = y.clamp(0, self.height() - 1);
-        self.img.as_ref().unwrap().get_pixel(x, y).0
+
+        match fmt {
+            ImageFormat::Hdr => img.get_pixel(x, y).0,
+            ImageFormat::OpenExr => img.get_pixel(x, y).0,
+            ImageFormat::Avif => img.get_pixel(x, y).0,
+            _ => Srgb::from(self.img.as_ref().unwrap().0.get_pixel(x, y).0)
+                .into_linear()
+                .into(),
+        }
     }
 }

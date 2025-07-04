@@ -16,7 +16,7 @@ use raytracer::{
     },
     texture::{ImageTexture, NoiseTexture, SolidColor},
     utils::{
-        color::Color,
+        color::{Color, ToonMap},
         quaternion::Quaternion,
         random::Random,
         vec3::{Point3, Vec3},
@@ -46,7 +46,7 @@ fn main() {
 fn background_scene() -> RgbImage {
     let world = Sphere::new(
         Vec3::new(0.0, -1000.0, 0.0),
-        1000.0,
+        1.0,
         Arc::new(Metal::new(Color::WHITE, 0.0)),
     );
 
@@ -57,12 +57,13 @@ fn background_scene() -> RgbImage {
     camera.samples_per_pixel = 100;
     camera.max_depth = 10;
 
-    camera.vertical_fov_in_degrees = 40.0;
-    camera.look_from = Point3::new(0.0, 0.1, 0.0);
-    camera.look_at = Point3::new(0.0, 1.0, 0.0);
-    camera.vec_up = Vec3::new(1.0, 0.0, 0.0);
+    camera.vertical_fov_in_degrees = 80.0;
+    camera.look_from = Point3::new(-2.0, 0.1, 0.0);
+    camera.look_at = Point3::new(0.0, 0.0, 0.0);
+    camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
 
     camera.defocus_angle_in_degrees = 0.0;
+    camera.toon_map = ToonMap::ACES;
 
     let mut back_tex = ImageTexture::new("citrus_orchard_road_puresky_4k.exr");
     back_tex.raw = true;

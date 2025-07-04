@@ -90,6 +90,14 @@ impl Vec3 {
         )
     }
 
+    pub fn clamp(self, min: f64, max: f64) -> Vec3 {
+        Vec3::new(
+            self[0].clamp(min, max),
+            self[1].clamp(min, max),
+            self[2].clamp(min, max),
+        )
+    }
+
     pub const ZERO: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 }
 

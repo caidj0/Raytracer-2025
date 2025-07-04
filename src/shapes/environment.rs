@@ -15,7 +15,7 @@ impl Environment {
         let p = UnitVec3::from_vec3(*ray.direction()).expect("The direction can't be normalized!");
 
         let theta = f64::acos(-p.y());
-        let phi = f64::atan2(-p.z(), p.x()) + PI;
+        let phi = PI - f64::atan2(-p.z(), p.x());
 
         let u = phi / (2.0 * PI);
         let v = theta / PI;

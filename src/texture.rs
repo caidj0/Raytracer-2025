@@ -98,13 +98,9 @@ impl Texture for ImageTexture {
 
         let i = (u * self.image.width() as f64) as u32;
         let j = (v * self.image.height() as f64) as u32;
-        if self.raw {
-            let pixel = self.image.pixel_data_raw(i, j);
-            Color::new(pixel[0] as f64, pixel[1] as f64, pixel[2] as f64)
-        } else {
-            let pixel = self.image.pixel_data(i, j);
-            Color::new(pixel.red as f64, pixel.green as f64, pixel.blue as f64)
-        }
+
+        let pixel = self.image.pixel_data(i, j);
+        Color::new(pixel[0] as f64, pixel[1] as f64, pixel[2] as f64)
     }
 }
 
