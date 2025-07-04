@@ -5,7 +5,7 @@ use crate::{
     texture::Texture,
     utils::{
         color::Color,
-        fresnel::{schlick_f64, schlick_weight},
+        fresnel::{dielectric, schlick, schlick_f64, schlick_r0_from_relative_ior, schlick_weight},
         lerp,
         vec3::{UnitVec3, Vec3},
     },
@@ -13,11 +13,17 @@ use crate::{
 
 pub struct Disney {
     base_color: Color,
+    roughness: f64,
+    anisotropic: f64,
 
     sheen: f64,
     sheen_tint: f64,
     clearcoat: f64,
     clearcoat_alpha: f64,
+    relative_ior: f64,
+    specular_tint: f64,
+    metallic: f64,
+    ior: f64,
 }
 
 impl Material for Disney {
@@ -45,6 +51,37 @@ impl Material for Disney {
 }
 
 impl Disney {
+    fn evaluate_brdf(
+        &self,
+        v_out: &UnitVec3,
+        v_half: &UnitVec3,
+        v_in: &UnitVec3,
+    ) -> (Color, f64, f64) {
+        let dot_nl = v_in.cos_theta();
+        let dot_nv = v_out.cos_theta();
+        if dot_nl <= 0.0 || dot_nv <= 0.0 {
+            return (Color::BLACK, 0.0, 0.0);
+        }
+
+        let (ax, ay) = calculate_anisotropic_params(self.roughness, self.anisotropic);
+
+        let d = ggx_anisotropic_d(v_half, ax, ay);
+        let gl = anisotropic_separable_smith_ggxg1(v_in, v_half, ax, ay);
+        let gv = anisotropic_separable_smith_ggxg1(v_out, v_half, ax, ay);
+
+        let f = self.disney_fresnel(v_out, v_half, v_in);
+
+        let (forward_pdf, reverse_pdf) =
+            ggx_vndf_anisotropic_pdf(v_in, v_half, v_out, ax, ay);
+
+        let forward_pdf = forward_pdf * (1.0 / (4.0 * v_out.dot(&v_half).abs()));
+        let reverse_pdf = reverse_pdf * (1.0 / (4.0 * v_in.dot(&v_half).abs()));
+
+        let value = d * gl * gv * f / (4.0 * dot_nl * dot_nv);
+
+        (value, forward_pdf, reverse_pdf)
+    }
+
     fn evaluate_sheen(&self, v_out: &UnitVec3, v_half: &UnitVec3, v_in: &UnitVec3) -> Color {
         if self.sheen <= 0.0 {
             return Color::BLACK;
@@ -82,6 +119,25 @@ impl Disney {
 
         (value, forward_pdf, reverse_pdf)
     }
+
+    fn disney_fresnel(&self, v_out: &UnitVec3, v_half: &UnitVec3, v_in: &UnitVec3) -> Color {
+        let dot_hv = v_half.dot(&v_out);
+
+        let tint = calculate_tint(self.base_color);
+
+        let r0 = schlick_r0_from_relative_ior(self.relative_ior)
+            * lerp(Vec3::new(1.0, 1.0, 1.0), tint, self.specular_tint);
+        let r0 = lerp(r0, self.base_color, self.metallic);
+
+        let dielectric_fresnel = dielectric(dot_hv, 1.0, self.ior);
+        let metallic_fresnel = schlick(r0, v_in.dot(&v_half));
+
+        lerp(
+            Vec3::new(dielectric_fresnel, dielectric_fresnel, dielectric_fresnel),
+            metallic_fresnel,
+            self.metallic,
+        )
+    }
 }
 
 fn calculate_tint(base_color: Color) -> Color {
@@ -109,4 +165,63 @@ fn separable_smith_ggxg1(w: &UnitVec3, a: f64) -> f64 {
     let dot_nv = w.y();
 
     2.0 / (1.0 + (a2 + (1.0 - a2) * dot_nv * dot_nv).sqrt())
+}
+
+fn ggx_anisotropic_d(v_half: &UnitVec3, ax: f64, ay: f64) -> f64 {
+    let dot_hx2 = v_half.x().powi(2);
+    let dot_hy2 = v_half.z().powi(2);
+    let cos_theta2 = v_half.y().powi(2);
+    let ax2 = ax * ax;
+    let ay2 = ay * ay;
+
+    1.0 / (PI * ax * ay * (dot_hx2 / ax2 + dot_hy2 / ay2 + cos_theta2).powi(2))
+}
+
+fn anisotropic_separable_smith_ggxg1(w: &UnitVec3, v_half: &UnitVec3, ax: f64, ay: f64) -> f64 {
+    let dot_hw = w.dot(&v_half);
+    if dot_hw <= 0.0 {
+        return 0.0;
+    }
+
+    let abs_tan_theta = w.tan_theta().abs();
+    if abs_tan_theta.is_infinite() {
+        return 0.0;
+    }
+
+    let a = (w.cos_phi() * ax * ax + w.sin_phi2() * ay * ay).sqrt();
+    let a2_tan_theta2 = (a * abs_tan_theta).powi(2);
+
+    let lambda = 0.5 * (-1.0 + (1.0 + a2_tan_theta2).sqrt());
+
+    1.0 / (1.0 + lambda)
+}
+
+fn calculate_anisotropic_params(roughness: f64, anisotropic: f64) -> (f64, f64) {
+    let aspect = (1.0 - 0.9 * anisotropic).sqrt();
+    let roughness2 = roughness * roughness;
+    let ax = f64::max(0.001, roughness2 / aspect);
+    let ay = f64::max(0.001, roughness2 * aspect);
+    (ax, ay)
+}
+
+fn ggx_vndf_anisotropic_pdf(
+    v_in: &UnitVec3,
+    v_half: &UnitVec3,
+    v_out: &UnitVec3,
+    ax: f64,
+    ay: f64,
+) -> (f64, f64) {
+    let d = ggx_anisotropic_d(v_half, ax, ay);
+
+    let abs_dot_nl = v_in.cos_theta().abs();
+    let abs_dot_hl = v_half.dot(v_in).abs();
+    let g1v = anisotropic_separable_smith_ggxg1(v_out, v_half, ax, ay);
+    let forward_pdf_weight = g1v * abs_dot_hl * d / abs_dot_nl;
+
+    let abs_dot_nv = v_out.cos_theta().abs();
+    let abs_dot_hv = v_half.dot(v_out).abs();
+    let g1l = anisotropic_separable_smith_ggxg1(v_in, v_half, ax, ay);
+    let reverse_pdf_weight = g1l * abs_dot_hv * d / abs_dot_nv;
+
+    (forward_pdf_weight, reverse_pdf_weight)
 }

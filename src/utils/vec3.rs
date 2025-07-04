@@ -326,6 +326,58 @@ impl UnitVec3 {
     pub fn as_inner(&self) -> &Vec3 {
         &self.0
     }
+
+    pub fn cos_theta(&self) -> f64 {
+        self.y()
+    }
+
+    pub fn cos_theta2(&self) -> f64 {
+        self.y()
+    }
+
+    pub fn sin_theta(&self) -> f64 {
+        self.sin_theta2().sqrt()
+    }
+
+    pub fn sin_theta2(&self) -> f64 {
+        1.0 - self.cos_theta2()
+    }
+
+    pub fn tan_theta(&self) -> f64 {
+        self.sin_theta() / self.cos_theta()
+    }
+
+    pub fn tan_theta2(&self) -> f64 {
+        self.sin_theta2() / self.cos_theta2()
+    }
+
+    pub fn cos_phi(&self) -> f64 {
+        let sin_theta = self.sin_theta();
+        if sin_theta.abs() < 1e8 {
+            1.0
+        } else {
+            self.x() / sin_theta
+        }
+    }
+
+    pub fn sin_phi(&self) -> f64 {
+        let sin_theta = self.sin_theta();
+        if sin_theta.abs() < 1e8 {
+            1.0
+        } else {
+            self.z() / sin_theta
+        }
+    }
+
+    pub fn cos_phi2(&self) -> f64 {
+        let cos_phi = self.cos_phi();
+        cos_phi * cos_phi
+    }
+
+    pub fn sin_phi2(&self) -> f64 {
+        let sin_phi = self.sin_phi();
+        sin_phi * sin_phi
+    }
 }
 
 impl Neg for UnitVec3 {
