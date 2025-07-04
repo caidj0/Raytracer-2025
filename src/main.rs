@@ -6,7 +6,7 @@ use raytracer::{
     bvh::BVH,
     camera::Camera,
     hits::Hittables,
-    material::{Dielectric, DiffuseLight, EmptyMaterial, Lambertian, Metal},
+    material::{Dielectric, DiffuseLight, EmptyMaterial, Lambertian, Metal, Mix},
     shapes::{
         Transform,
         obj::Wavefont,
@@ -32,7 +32,7 @@ fn main() {
         3 => obj_scene(),
         _ => background_scene(),
     };
-    let path_string = format!("output/{}/{}.png", "book4", "image2");
+    let path_string = format!("output/{}/{}.png", "book4", "image4");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -44,11 +44,30 @@ fn main() {
 }
 
 fn background_scene() -> RgbImage {
-    let world = Sphere::new(
-        Vec3::new(0.0, -1000.0, 0.0),
-        1.0,
-        Arc::new(Metal::new(Color::WHITE, 0.0)),
-    );
+    let mut world = Hittables::default();
+    // world.add(Box::new(Sphere::new(
+    //     Vec3::new(0.0, 0.0, 0.0),
+    //     1.0,
+    //     Arc::new(Dielectric::new(1.5)),
+    // )));
+
+    let metal_mat = Arc::new(Metal::new(Color::WHITE, 0.0));
+    let lam_mat = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Color::new(
+        0.8, 0.8, 0.8,
+    )))));
+    let mix_mat = Arc::new(Mix::new(metal_mat.clone(), lam_mat.clone(), 0.5));
+    world.add(Box::new(Quad::new(
+        Vec3::new(-2.0, -2.0, -2.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 4.0),
+        mix_mat,
+    )));
+
+    let light_mat = Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(
+        Color::new(0.75, 1.0, 0.58) * 10.0,
+    ))));
+    let light = Sphere::new(Vec3::new(1.5, -1.5, 0.0), 0.2, light_mat);
+    world.add(Box::new(light.clone()));
 
     let mut camera = Camera::default();
 
@@ -57,19 +76,19 @@ fn background_scene() -> RgbImage {
     camera.samples_per_pixel = 100;
     camera.max_depth = 10;
 
-    camera.vertical_fov_in_degrees = 80.0;
-    camera.look_from = Point3::new(-2.0, 0.1, 0.0);
+    camera.vertical_fov_in_degrees = 40.0;
+    camera.look_from = Point3::new(-2.0, 1.0, 0.0) * 2.0;
     camera.look_at = Point3::new(0.0, 0.0, 0.0);
     camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
 
     camera.defocus_angle_in_degrees = 0.0;
     camera.toon_map = ToonMap::ACES;
 
-    let mut back_tex = ImageTexture::new("citrus_orchard_road_puresky_4k.exr");
+    let mut back_tex = ImageTexture::new("rogland_clear_night_4k.exr");
     back_tex.raw = true;
     camera.background.texture = Arc::new(back_tex);
 
-    let img = camera.render(&world, None);
+    let img = camera.render(&world, Some(&light));
 
     drop(world);
 

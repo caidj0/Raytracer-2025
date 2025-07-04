@@ -31,7 +31,8 @@ pub trait Material: Send + Sync {
 
     #[allow(unused_variables)]
     fn scattering_pdf(&self, r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
-        unimplemented!("If using pdf, this function should be overloaded!")
+        // unimplemented!("If using pdf, this function should be overloaded!")
+        0.0
     }
 }
 
@@ -206,5 +207,52 @@ impl Material for Isotropic {
 
     fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> f64 {
         1.0 / (4.0 * PI)
+    }
+}
+
+pub struct Transparent;
+
+impl Material for Transparent {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
+        Some(ScatterRecord {
+            attenuation: Color::WHITE,
+            pdf_or_ray: PDForRay::Ray(Ray::new_with_time(rec.p, *r_in.direction(), *r_in.time())),
+        })
+    }
+}
+
+pub struct Mix {
+    mat1: Arc<dyn Material>,
+    mat2: Arc<dyn Material>,
+    ratio: f64,
+}
+
+impl Mix {
+    pub fn new(mat1: Arc<dyn Material>, mat2: Arc<dyn Material>, ratio: f64) -> Mix {
+        Mix {
+            mat1,
+            mat2,
+            ratio: ratio.clamp(0.0, 1.0),
+        }
+    }
+}
+
+impl Material for Mix {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
+        if Random::f64() > self.ratio {
+            self.mat1.scatter(r_in, rec)
+        } else {
+            self.mat2.scatter(r_in, rec)
+        }
+    }
+
+    fn emitted(&self, r_in: &Ray, rec: &HitRecord) -> Color {
+        self.mat1.emitted(r_in, rec) * (1.0 - self.ratio)
+            + self.mat2.emitted(r_in, rec) * self.ratio
+    }
+
+    fn scattering_pdf(&self, r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
+        self.mat1.scattering_pdf(r_in, rec, scattered) * (1.0 - self.ratio)
+            + self.mat2.scattering_pdf(r_in, rec, scattered) * self.ratio
     }
 }
