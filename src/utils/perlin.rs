@@ -5,6 +5,7 @@ use crate::utils::{
     vec3::{Point3, UnitVec3, Vec3},
 };
 
+#[derive(Debug)]
 pub struct Perlin {
     randvec: [UnitVec3; Perlin::POINT_COUNT],
     perm_x: [usize; Perlin::POINT_COUNT],

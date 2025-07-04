@@ -11,6 +11,8 @@ use crate::{
     hit::Hittable,
     material::PDForRay,
     pdf::{HittablePDF, MixturePDF, PDF},
+    shapes::environment::Environment,
+    texture::SolidColor,
     utils::{
         color::Color,
         interval::Interval,
@@ -26,7 +28,7 @@ pub struct Camera {
     pub image_width: u32,
     pub samples_per_pixel: usize,
     pub max_depth: u32,
-    pub background: Color,
+    pub background: Environment,
 
     pub vertical_fov_in_degrees: f64,
     pub look_from: Point3,
@@ -56,7 +58,9 @@ impl Default for Camera {
             image_width: 100,
             samples_per_pixel: 10,
             max_depth: 10,
-            background: Color::BLACK,
+            background: Environment {
+                texture: Arc::new(SolidColor::new(Color::BLACK)),
+            },
             vertical_fov_in_degrees: 90.0,
             look_from: Point3::new(0.0, 0.0, 0.0),
             look_at: Point3::new(0.0, 0.0, -1.0),
@@ -213,7 +217,7 @@ impl Camera {
         }
 
         let Some(rec) = world.hit(r, &Interval::from_range(0.001..f64::INFINITY)) else {
-            return self.background;
+            return self.background.value(r);
         };
 
         let color_from_emission = rec.mat.emitted(r, &rec);

@@ -3,9 +3,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use image::{ImageReader, Pixel, Rgb32FImage};
+use image::{ImageReader, Rgb32FImage};
 use palette::{LinSrgb, Srgb};
 
+#[derive(Debug)]
 pub struct Image {
     img: Option<Rgb32FImage>,
 }
@@ -59,7 +60,16 @@ impl Image {
 
         let x = x.clamp(0, self.width() - 1);
         let y = y.clamp(0, self.height() - 1);
-        self.img.as_ref().unwrap().get_pixel(x, y).to_luma();
         Srgb::from(self.img.as_ref().unwrap().get_pixel(x, y).0).into_linear()
+    }
+
+    pub fn pixel_data_raw(&self, x: u32, y: u32) -> [f32; 3] {
+        if self.img.is_none() {
+            return [1.0, 0.0, 1.0];
+        }
+
+        let x = x.clamp(0, self.width() - 1);
+        let y = y.clamp(0, self.height() - 1);
+        self.img.as_ref().unwrap().get_pixel(x, y).0
     }
 }

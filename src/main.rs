@@ -25,11 +25,12 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 3 {
+    let img = match 4 {
         0 => cornell_box(),
         1 => final_scene(400, 250, 4),
         2 => final_scene(800, 5000, 40),
-        _ => obj_scene(),
+        3 => obj_scene(),
+        _ => background_scene(),
     };
     let path_string = format!("output/{}/{}.png", "book4", "image2");
     let path = std::path::Path::new(&path_string);
@@ -40,6 +41,38 @@ fn main() {
         style(path.to_str().unwrap()).yellow()
     );
     img.save(path).expect("Cannot save the image to the file");
+}
+
+fn background_scene() -> RgbImage {
+    let world = Sphere::new(
+        Vec3::new(0.0, -1000.0, 0.0),
+        1000.0,
+        Arc::new(Metal::new(Color::WHITE, 0.0)),
+    );
+
+    let mut camera = Camera::default();
+
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 1920;
+    camera.samples_per_pixel = 100;
+    camera.max_depth = 10;
+
+    camera.vertical_fov_in_degrees = 40.0;
+    camera.look_from = Point3::new(0.0, 0.1, 0.0);
+    camera.look_at = Point3::new(0.0, 1.0, 0.0);
+    camera.vec_up = Vec3::new(1.0, 0.0, 0.0);
+
+    camera.defocus_angle_in_degrees = 0.0;
+
+    let mut back_tex = ImageTexture::new("citrus_orchard_road_puresky_4k.exr");
+    back_tex.raw = true;
+    camera.background.texture = Arc::new(back_tex);
+
+    let img = camera.render(&world, None);
+
+    drop(world);
+
+    img
 }
 
 fn obj_scene() -> RgbImage {
@@ -77,7 +110,7 @@ fn obj_scene() -> RgbImage {
 
     camera.defocus_angle_in_degrees = 0.0;
 
-    camera.background = Color::new(0.1, 0.1, 0.1);
+    camera.background.texture = Arc::new(SolidColor::new(Color::new(0.1, 0.1, 0.1)));
 
     let img = camera.render(&world, None);
 
@@ -224,7 +257,6 @@ fn final_scene(image_width: u32, samples_per_pixel: usize, max_depth: u32) -> Rg
     camera.image_width = image_width;
     camera.samples_per_pixel = samples_per_pixel;
     camera.max_depth = max_depth;
-    camera.background = Color::BLACK;
 
     camera.vertical_fov_in_degrees = 40.0;
     camera.look_from = Point3::new(478.0, 278.0, -600.0);
@@ -325,7 +357,6 @@ fn cornell_box() -> RgbImage {
     camera.image_width = 300;
     camera.samples_per_pixel = 10;
     camera.max_depth = 10;
-    camera.background = Color::BLACK;
 
     camera.vertical_fov_in_degrees = 40.0;
     camera.look_from = Point3::new(278.0, 278.0, -800.0);

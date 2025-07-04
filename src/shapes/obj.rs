@@ -41,7 +41,7 @@ impl RemappedMaterial {
 
         HitRecord {
             p: rec.p,
-            normal: normal,
+            normal,
             mat: rec.mat,
             t: rec.t,
             u: tex_coord.x(),

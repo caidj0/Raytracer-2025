@@ -8,6 +8,7 @@ use crate::{
     },
 };
 
+pub mod environment;
 pub mod obj;
 pub mod quad;
 pub mod sphere;
@@ -100,8 +101,11 @@ impl Hittable for Transform {
         let mut rec = self.object.hit(&local_ray, interval)?;
 
         rec.p = self.transform(rec.p);
-        rec.normal =
-            UnitVec3::from_vec3_raw(self.quaternion.rotate_vector(rec.normal.into_inner()));
+        rec.normal = UnitVec3::from_vec3(
+            self.quaternion
+                .rotate_vector(rec.normal.into_inner() / self.scale),
+        )
+        .expect("The transformed normal can't be normalized!");
 
         Some(rec)
     }

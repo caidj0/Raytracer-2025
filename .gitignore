@@ -18,3 +18,5 @@ output/
 .idea/
 
 .vscode/
+
+*.exr
