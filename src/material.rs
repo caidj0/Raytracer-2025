@@ -4,17 +4,22 @@ use crate::{
     hit::HitRecord,
     pdf::{CosinePDF, PDF, SpherePDF},
     texture::Texture,
-    utils::{color::Color, random::Random, ray::Ray, vec3::UnitVec3},
+    utils::{
+        color::Color,
+        random::Random,
+        ray::Ray,
+        vec3::{Point3, UnitVec3},
+    },
 };
 
-pub enum PDForRay {
+pub enum ScatterType {
     PDF(Box<dyn PDF>),
     Ray(Ray),
 }
 
 pub struct ScatterRecord {
     pub attenuation: Color,
-    pub pdf_or_ray: PDForRay,
+    pub scatter_type: ScatterType,
 }
 
 pub trait Material: Send + Sync {
@@ -47,7 +52,7 @@ impl Material for EmptyMaterial {
 
         Some(ScatterRecord {
             attenuation,
-            pdf_or_ray: PDForRay::PDF(pdf_ptr),
+            scatter_type: ScatterType::PDF(pdf_ptr),
         })
     }
 
@@ -76,7 +81,7 @@ impl Material for Lambertian {
 
         Some(ScatterRecord {
             attenuation,
-            pdf_or_ray: PDForRay::PDF(pdf_ptr),
+            scatter_type: ScatterType::PDF(pdf_ptr),
         })
     }
 
@@ -112,7 +117,7 @@ impl Material for Metal {
 
         Some(ScatterRecord {
             attenuation,
-            pdf_or_ray: PDForRay::Ray(Ray::new_with_time(rec.p, reflected, *r_in.time())),
+            scatter_type: ScatterType::Ray(Ray::new_with_time(rec.p, reflected, *r_in.time())),
         })
     }
 }
@@ -159,7 +164,7 @@ impl Material for Dielectric {
 
         Some(ScatterRecord {
             attenuation,
-            pdf_or_ray: PDForRay::Ray(Ray::new_with_time(rec.p, direction, *r_in.time())),
+            scatter_type: ScatterType::Ray(Ray::new_with_time(rec.p, direction, *r_in.time())),
         })
     }
 }
@@ -201,7 +206,7 @@ impl Material for Isotropic {
 
         Some(ScatterRecord {
             attenuation,
-            pdf_or_ray: PDForRay::PDF(pdf_ptr),
+            scatter_type: ScatterType::PDF(pdf_ptr),
         })
     }
 
@@ -216,15 +221,20 @@ impl Material for Transparent {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         Some(ScatterRecord {
             attenuation: Color::WHITE,
-            pdf_or_ray: PDForRay::Ray(Ray::new_with_time(rec.p, *r_in.direction(), *r_in.time())),
+            scatter_type: ScatterType::Ray(Ray::new_with_time(rec.p, *r_in.direction(), *r_in.time())),
         })
     }
+}
+
+enum MixRatioType {
+    Num(f64),
+    Tex(Arc<dyn Texture>),
 }
 
 pub struct Mix {
     mat1: Arc<dyn Material>,
     mat2: Arc<dyn Material>,
-    ratio: f64,
+    ratio: MixRatioType,
 }
 
 impl Mix {
@@ -232,14 +242,34 @@ impl Mix {
         Mix {
             mat1,
             mat2,
-            ratio: ratio.clamp(0.0, 1.0),
+            ratio: MixRatioType::Num(ratio),
+        }
+    }
+
+    pub fn from_tex(
+        mat1: Arc<dyn Material>,
+        mat2: Arc<dyn Material>,
+        tex: Arc<dyn Texture>,
+    ) -> Mix {
+        Mix {
+            mat1,
+            mat2,
+            ratio: MixRatioType::Tex(tex),
+        }
+    }
+
+    fn get_ratio(&self, u: f64, v: f64, p: &Point3) -> f64 {
+        match &self.ratio {
+            MixRatioType::Num(r) => *r,
+            MixRatioType::Tex(tex) => tex.value(u, v, p).e().iter().sum::<f64>() / 3.0,
         }
     }
 }
 
 impl Material for Mix {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
-        if Random::f64() > self.ratio {
+        let ratio = self.get_ratio(rec.u, rec.v, &rec.p);
+        if Random::f64() > ratio {
             self.mat1.scatter(r_in, rec)
         } else {
             self.mat2.scatter(r_in, rec)
@@ -247,12 +277,13 @@ impl Material for Mix {
     }
 
     fn emitted(&self, r_in: &Ray, rec: &HitRecord) -> Color {
-        self.mat1.emitted(r_in, rec) * (1.0 - self.ratio)
-            + self.mat2.emitted(r_in, rec) * self.ratio
+        let ratio = self.get_ratio(rec.u, rec.v, &rec.p);
+        self.mat1.emitted(r_in, rec) * (1.0 - ratio) + self.mat2.emitted(r_in, rec) * ratio
     }
 
     fn scattering_pdf(&self, r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
-        self.mat1.scattering_pdf(r_in, rec, scattered) * (1.0 - self.ratio)
-            + self.mat2.scattering_pdf(r_in, rec, scattered) * self.ratio
+        let ratio = self.get_ratio(rec.u, rec.v, &rec.p);
+        self.mat1.scattering_pdf(r_in, rec, scattered) * (1.0 - ratio)
+            + self.mat2.scattering_pdf(r_in, rec, scattered) * ratio
     }
 }

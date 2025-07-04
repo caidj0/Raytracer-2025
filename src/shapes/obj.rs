@@ -8,7 +8,7 @@ use crate::{
     bvh::BVH,
     hit::{HitRecord, Hittable},
     hits::Hittables,
-    material::{EmptyMaterial, Lambertian, Material},
+    material::{EmptyMaterial, Lambertian, Material, Mix, Transparent},
     shapes::triangle::Triangle,
     texture::{ImageTexture, SolidColor, Texture},
     utils::vec3::{Point3, UnitVec3, Vec3},
@@ -116,85 +116,130 @@ impl Wavefont {
     pub fn new(file_name: &str) -> Option<Wavefont> {
         let (objects, materials) = Self::load(file_name).ok()?;
 
-        let mut obs = Hittables::default();
         let mut mats: Vec<Arc<dyn Material>> = vec![];
         let mut normals: Vec<Option<Arc<ImageTexture>>> = vec![];
         if let Ok(materials) = materials {
-            for material in materials {
-                let tex: Arc<dyn Texture> = if let Some(tex_name) = material.diffuse_texture {
-                    Arc::new(ImageTexture::new(&tex_name))
-                } else if let Some(color) = material.diffuse {
-                    Arc::new(SolidColor::from(color))
-                } else {
-                    panic!("The material should at least have one diffuse!")
-                };
-
-                let mat: Arc<dyn Material> = Arc::new(Lambertian::new(tex));
-                mats.push(mat);
-
-                if let Some(tex_name) = material.normal_texture {
-                    normals.push(Some(Arc::new(ImageTexture::new(&tex_name))));
-                } else {
-                    normals.push(None);
-                }
-            }
+            load_materials(&mut mats, &mut normals, materials);
         }
 
-        let empty_material = Arc::new(EmptyMaterial);
+        let mut obs = Hittables::default();
 
         for (object, normal) in objects.iter().zip(normals.iter()) {
-            let mut v: Vec<Box<dyn Hittable>> = Vec::new();
-            for indices in object.mesh.indices.chunks(3) {
-                let p1 = Wavefont::get_three_values(&object.mesh.positions, indices[0] as usize);
-                let p2 = Wavefont::get_three_values(&object.mesh.positions, indices[1] as usize);
-                let p3 = Wavefont::get_three_values(&object.mesh.positions, indices[2] as usize);
-
-                let tex_p1 = Wavefont::get_two_values(&object.mesh.texcoords, indices[0] as usize);
-                let tex_p2 = Wavefont::get_two_values(&object.mesh.texcoords, indices[1] as usize);
-                let tex_p3 = Wavefont::get_two_values(&object.mesh.texcoords, indices[2] as usize);
-
-                let mat = if let Some(id) = object.mesh.material_id {
-                    mats[id].clone()
-                } else {
-                    empty_material.clone()
-                };
-
-                let tex_u = tex_p2 - tex_p1;
-                let tex_v = tex_p3 - tex_p1;
-
-                let ua = tex_v.y() / (-tex_u.y() * tex_v.x() + tex_u.x() * tex_v.y());
-                let ub = tex_u.y() / (tex_u.y() * tex_v.x() - tex_u.x() * tex_v.y());
-                let va = tex_v.x() / (tex_u.y() * tex_v.x() - tex_u.x() * tex_v.y());
-                let vb = tex_u.x() / (-tex_u.y() * tex_v.x() + tex_u.x() * tex_v.y());
-
-                let world_u = p2 - p1;
-                let world_v = p3 - p1;
-
-                let u_vec = UnitVec3::from_vec3(world_u * ua + world_v * ub)
-                    .expect("The u vec can't be normalized!");
-                let v_vec = UnitVec3::from_vec3(world_u * va + world_v * vb)
-                    .expect("The v vec can't be normalized!");
-
-                let mat = Arc::new(RemappedMaterial {
-                    material: mat,
-                    tex_ori: tex_p1,
-                    tex_u,
-                    tex_v,
-                    u_vec,
-                    v_vec,
-                    normal: normal.clone(),
-                });
-
-                v.push(Box::new(Triangle::new(p1, world_u, world_v, mat)));
-            }
-            if !v.is_empty() {
-                obs.add(Box::new(BVH::from_vec(v)));
-            } else {
-                println!("The object {} from {} is empty!", object.name, file_name);
-            }
+            load_object(file_name, &mats, &mut obs, object, normal);
         }
 
         Some(Wavefont { objects: obs })
+    }
+}
+
+fn load_object(
+    file_name: &str,
+    mats: &Vec<Arc<dyn Material>>,
+    obs: &mut Hittables,
+    object: &tobj::Model,
+    normal: &Option<Arc<ImageTexture>>,
+) {
+    let empty_material = Arc::new(EmptyMaterial);
+
+    let mut v: Vec<Box<dyn Hittable>> = Vec::new();
+    for indices in object.mesh.indices.chunks(3) {
+        let p1 = Wavefont::get_three_values(&object.mesh.positions, indices[0] as usize);
+        let p2 = Wavefont::get_three_values(&object.mesh.positions, indices[1] as usize);
+        let p3 = Wavefont::get_three_values(&object.mesh.positions, indices[2] as usize);
+
+        let tex_p1 = Wavefont::get_two_values(&object.mesh.texcoords, indices[0] as usize);
+        let tex_p2 = Wavefont::get_two_values(&object.mesh.texcoords, indices[1] as usize);
+        let tex_p3 = Wavefont::get_two_values(&object.mesh.texcoords, indices[2] as usize);
+
+        let mat = if let Some(id) = object.mesh.material_id {
+            mats[id].clone()
+        } else {
+            empty_material.clone()
+        };
+
+        let tex_u = tex_p2 - tex_p1;
+        let tex_v = tex_p3 - tex_p1;
+
+        let world_u = p2 - p1;
+        let world_v = p3 - p1;
+
+        let (u_vec, v_vec) = uv_local_to_world(tex_u, tex_v, world_u, world_v);
+
+        let mat = Arc::new(RemappedMaterial {
+            material: mat,
+            tex_ori: tex_p1,
+            tex_u,
+            tex_v,
+            u_vec,
+            v_vec,
+            normal: normal.clone(),
+        });
+
+        v.push(Box::new(Triangle::new(p1, world_u, world_v, mat)));
+    }
+    if !v.is_empty() {
+        obs.add(Box::new(BVH::from_vec(v)));
+    } else {
+        println!("The object {} from {} is empty!", object.name, file_name);
+    }
+}
+
+fn uv_local_to_world(
+    tex_u: Vec3,
+    tex_v: Vec3,
+    world_u: Vec3,
+    world_v: Vec3,
+) -> (UnitVec3, UnitVec3) {
+    let ua = tex_v.y() / (-tex_u.y() * tex_v.x() + tex_u.x() * tex_v.y());
+    let ub = tex_u.y() / (tex_u.y() * tex_v.x() - tex_u.x() * tex_v.y());
+    let va = tex_v.x() / (tex_u.y() * tex_v.x() - tex_u.x() * tex_v.y());
+    let vb = tex_u.x() / (-tex_u.y() * tex_v.x() + tex_u.x() * tex_v.y());
+
+    let u_vec =
+        UnitVec3::from_vec3(world_u * ua + world_v * ub).expect("The u vec can't be normalized!");
+    let v_vec =
+        UnitVec3::from_vec3(world_u * va + world_v * vb).expect("The v vec can't be normalized!");
+    (u_vec, v_vec)
+}
+
+fn load_materials(
+    mats: &mut Vec<Arc<dyn Material>>,
+    normals: &mut Vec<Option<Arc<ImageTexture>>>,
+    materials: Vec<tobj::Material>,
+) {
+    let transparent_mat = Arc::new(Transparent);
+
+    for material in materials {
+        let tex: Arc<dyn Texture> = if let Some(tex_name) = material.diffuse_texture {
+            Arc::new(ImageTexture::new(&tex_name))
+        } else if let Some(color) = material.diffuse {
+            Arc::new(SolidColor::from(color))
+        } else {
+            panic!("The material should at least have one diffuse!")
+        };
+
+        let mut mat: Arc<dyn Material> = Arc::new(Lambertian::new(tex));
+
+        if let Some(dissolve_tex) = material.dissolve_texture {
+            mat = Arc::new(Mix::from_tex(
+                transparent_mat.clone(),
+                mat,
+                Arc::new(ImageTexture::new(&dissolve_tex)),
+            ));
+        }
+        if let Some(dissolve) = material.dissolve {
+            if dissolve < 1.0 {
+                mat = Arc::new(Mix::new(transparent_mat.clone(), mat, dissolve));
+            }
+        }
+
+        mats.push(mat);
+
+        if let Some(tex_name) = material.normal_texture {
+            normals.push(Some(Arc::new(ImageTexture::new(&tex_name))));
+        } else {
+            normals.push(None);
+        }
     }
 }
 

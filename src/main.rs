@@ -25,7 +25,7 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 4 {
+    let img = match 3 {
         0 => cornell_box(),
         1 => final_scene(400, 250, 4),
         2 => final_scene(800, 5000, 40),
@@ -64,9 +64,10 @@ fn background_scene() -> RgbImage {
     )));
 
     let light_mat = Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(
-        Color::new(0.75, 1.0, 0.58) * 10.0,
+        Color::new(0.75, 1.0, 0.58) * 1.0,
     ))));
-    let light = Sphere::new(Vec3::new(1.5, -1.5, 0.0), 0.2, light_mat);
+    let mix_mat2 = Arc::new(Mix::new(light_mat.clone(), metal_mat.clone(), 0.5));
+    let light = Sphere::new(Vec3::new(1.5, -1.5, 0.0), 0.2, mix_mat2);
     world.add(Box::new(light.clone()));
 
     let mut camera = Camera::default();

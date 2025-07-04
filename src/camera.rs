@@ -9,7 +9,7 @@ use rayon::prelude::*;
 
 use crate::{
     hit::Hittable,
-    material::PDForRay,
+    material::ScatterType,
     pdf::{HittablePDF, MixturePDF, PDF},
     shapes::environment::Environment,
     texture::SolidColor,
@@ -229,8 +229,8 @@ impl Camera {
             return color_from_emission;
         };
 
-        let color_from_scatter = match scatter_record.pdf_or_ray {
-            PDForRay::PDF(pdf_ptr) => {
+        let color_from_scatter = match scatter_record.scatter_type {
+            ScatterType::PDF(pdf_ptr) => {
                 let light_ptr =
                     lights.map(|lights_hit| Box::new(HittablePDF::new(lights_hit, rec.p)));
                 let mixed_pdf: Box<dyn PDF> = if let Some(ref light) = light_ptr {
@@ -248,7 +248,7 @@ impl Camera {
                 let sample_color = self.ray_color(&scattered, depth - 1, world, lights);
                 (scatter_record.attenuation * scattering_pdf * sample_color) / pdf_value
             }
-            PDForRay::Ray(skip_pdf_ray) => {
+            ScatterType::Ray(skip_pdf_ray) => {
                 scatter_record.attenuation * self.ray_color(&skip_pdf_ray, depth - 1, world, lights)
             }
         };
