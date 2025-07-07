@@ -24,6 +24,7 @@ pub struct Disney {
     specular_tint: f64,
     metallic: f64,
     ior: f64,
+    flatness: f64,
 }
 
 impl Material for Disney {
@@ -71,8 +72,7 @@ impl Disney {
 
         let f = self.disney_fresnel(v_out, v_half, v_in);
 
-        let (forward_pdf, reverse_pdf) =
-            ggx_vndf_anisotropic_pdf(v_in, v_half, v_out, ax, ay);
+        let (forward_pdf, reverse_pdf) = ggx_vndf_anisotropic_pdf(v_in, v_half, v_out, ax, ay);
 
         let forward_pdf = forward_pdf * (1.0 / (4.0 * v_out.dot(&v_half).abs()));
         let reverse_pdf = reverse_pdf * (1.0 / (4.0 * v_in.dot(&v_half).abs()));
@@ -137,6 +137,96 @@ impl Disney {
             metallic_fresnel,
             self.metallic,
         )
+    }
+
+    fn evaluate_disney_spec_transmission(
+        &self,
+        v_out: &UnitVec3,
+        v_half: &UnitVec3,
+        v_in: &UnitVec3,
+        ax: f64,
+        ay: f64,
+        thin: bool,
+    ) -> Color {
+        let relative_ior = self.relative_ior;
+        let n2 = relative_ior * relative_ior;
+
+        let abs_dot_nl = v_in.cos_theta().abs();
+        let abs_dot_nv = v_out.cos_theta().abs();
+        let dot_hl = v_half.dot(&v_in);
+        let dot_hv = v_half.dot(&v_out);
+        let abs_dot_hl = dot_hl.abs();
+        let abs_dot_hv = dot_hv.abs();
+
+        let d = ggx_anisotropic_d(v_half, ax, ay);
+        let gl = anisotropic_separable_smith_ggxg1(v_in, v_half, ax, ay);
+        let gv = anisotropic_separable_smith_ggxg1(v_out, v_half, ax, ay);
+
+        let f = dielectric(dot_hv, 1.0, 1.0 / relative_ior);
+
+        let color = if thin {
+            self.base_color.sqrt()
+        } else {
+            self.base_color
+        };
+
+        let c = (abs_dot_hl * abs_dot_hv) / (abs_dot_nl * abs_dot_nv);
+        let t = n2 / (dot_hl + relative_ior * dot_hv).powi(2);
+        c * t * (1.0 - f) * gl * gv * d * color
+    }
+
+    fn evaluate_disney_diffuse(
+        &self,
+        v_out: &UnitVec3,
+        v_half: &UnitVec3,
+        v_in: &UnitVec3,
+        thin: bool,
+    ) -> f64 {
+        let abs_dot_nl = v_in.cos_theta().abs();
+        let abs_dot_nv = v_out.cos_theta().abs();
+
+        let fl = schlick_weight(abs_dot_nl);
+        let fv = schlick_weight(abs_dot_nv);
+
+        let hanrahan_krueger = if thin && self.flatness > 0.0 {
+            let roughness = self.roughness * self.roughness;
+
+            let dot_hl = v_half.dot(&v_in);
+            let fss90 = dot_hl * dot_hl * roughness;
+            let fss = lerp(1.0, fss90, fl) * lerp(1.0, fss90, fv);
+
+            1.25 * (fss * (1.0 / (abs_dot_nl + abs_dot_nv) - 0.5) + 0.5)
+        } else {
+            0.0
+        };
+
+        let lambert = 1.0;
+        let retro = self.evaluate_disney_retro_diffuse(v_out, v_half, v_in);
+        let subsurface_approx = lerp(
+            lambert,
+            hanrahan_krueger,
+            if thin { self.flatness } else { 0.0 },
+        );
+
+        1.0 / PI * (retro + subsurface_approx * (1.0 - 0.5 * fl) * (1.0 - 0.5 * fv))
+    }
+
+    fn evaluate_disney_retro_diffuse(
+        &self,
+        v_out: &UnitVec3,
+        _v_half: &UnitVec3,
+        v_in: &UnitVec3,
+    ) -> f64 {
+        let abs_dot_nl = v_in.cos_theta().abs();
+        let abs_dot_nv = v_out.cos_theta().abs();
+
+        let roughness = self.roughness * self.roughness;
+
+        let rr = 0.5 + 2.0 * abs_dot_nl * abs_dot_nl * roughness;
+        let fl = schlick_weight(abs_dot_nl);
+        let fv = schlick_weight(abs_dot_nv);
+
+        rr * (fl + fv + fl * fv * (rr - 1.0))
     }
 }
 
@@ -224,4 +314,8 @@ fn ggx_vndf_anisotropic_pdf(
     let reverse_pdf_weight = g1l * abs_dot_hv * d / abs_dot_nv;
 
     (forward_pdf_weight, reverse_pdf_weight)
+}
+
+fn thin_transmission_roughness(ior: f64, roughness: f64) -> f64 {
+    ((0.65 * ior - 0.35) * roughness).clamp(0.0, 1.0)
 }

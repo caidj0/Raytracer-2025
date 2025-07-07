@@ -98,6 +98,14 @@ impl Vec3 {
         )
     }
 
+    pub fn sqrt(self) -> Vec3 {
+        let ret = Vec3::new(self[0].sqrt(), self[1].sqrt(), self[2].sqrt());
+        if ret.e.iter().any(|x| x.is_nan()) {
+            panic!("The answer of sqrt is NaN!");
+        }
+        ret
+    }
+
     pub const ZERO: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 }
 
