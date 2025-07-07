@@ -20,7 +20,7 @@ pub enum ScatterType<'a> {
 }
 
 pub struct ScatterRecord<'a> {
-    pub attenuation: Color,
+    pub attenuation: Color, // 仅对 Ray 类型有效
     pub scatter_type: ScatterType<'a>,
 }
 
@@ -50,7 +50,7 @@ impl Material for EmptyMaterial {
 
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let attenuation = Color::new(0.75, 0.75, 0.75);
-        let pdf_ptr = Box::new(CosinePDF::new(&rec.normal));
+        let pdf_ptr = Box::new(CosinePDF::new(attenuation, &rec.normal));
 
         Some(ScatterRecord {
             attenuation,
@@ -79,7 +79,7 @@ impl Lambertian {
 impl Material for Lambertian {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let attenuation = self.texture.value(rec.u, rec.v, &rec.p);
-        let pdf_ptr = Box::new(CosinePDF::new(&rec.normal));
+        let pdf_ptr = Box::new(CosinePDF::new(attenuation, &rec.normal));
 
         Some(ScatterRecord {
             attenuation,
@@ -204,7 +204,7 @@ impl Isotropic {
 impl Material for Isotropic {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let attenuation = self.texture.value(rec.u, rec.v, &rec.p);
-        let pdf_ptr = Box::new(SpherePDF);
+        let pdf_ptr = Box::new(SpherePDF { attenuation });
 
         Some(ScatterRecord {
             attenuation,

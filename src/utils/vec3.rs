@@ -386,6 +386,10 @@ impl UnitVec3 {
         let sin_phi = self.sin_phi();
         sin_phi * sin_phi
     }
+
+    pub const X_AXIS: UnitVec3 = UnitVec3::from_vec3_raw(Vec3::new(1.0, 0.0, 0.0));
+    pub const Y_AXIS: UnitVec3 = UnitVec3::from_vec3_raw(Vec3::new(0.0, 1.0, 0.0));
+    pub const Z_AXIS: UnitVec3 = UnitVec3::from_vec3_raw(Vec3::new(0.0, 0.0, 1.0));
 }
 
 impl Neg for UnitVec3 {

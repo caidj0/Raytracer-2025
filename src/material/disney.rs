@@ -2,7 +2,7 @@ use std::f64::consts::PI;
 
 use crate::{
     material::{Material, ScatterRecord, ScatterType},
-    pdf::DisneyPDF,
+    pdf::PDF,
     utils::{
         color::Color,
         fresnel::{dielectric, schlick, schlick_f64, schlick_r0_from_relative_ior, schlick_weight},
@@ -22,12 +22,13 @@ pub struct Disney {
     pub sheen: f64,
     pub sheen_tint: f64,
     pub clearcoat: f64,
-    pub clearcoat_alpha: f64,
+    pub clearcoat_gloss: f64,
     pub relative_ior: f64,
     pub specular_tint: f64,
     pub metallic: f64,
     pub ior: f64,
     pub flatness: f64,
+    pub spec_trans: f64,
 }
 
 impl Material for Disney {
@@ -36,13 +37,13 @@ impl Material for Disney {
         r_in: &crate::utils::ray::Ray,
         rec: &crate::hit::HitRecord,
     ) -> Option<super::ScatterRecord> {
-        let v_in = UnitVec3::from_vec3(-r_in.direction()).unwrap();
-        let disney_pdf = Box::new(DisneyPDF::new(self, &rec.normal, &v_in));
+        let v_out = UnitVec3::from_vec3(-r_in.direction()).unwrap();
 
-        let attenuation = self.base_color;
+        // 这个 thin 能做什么？
+        let disney_pdf = Box::new(DisneyPDF::new(self, &rec.normal, &v_out, false));
 
         Some(ScatterRecord {
-            attenuation: attenuation,
+            attenuation: self.base_color,
             scatter_type: ScatterType::PDF(disney_pdf),
         })
     }
@@ -53,39 +54,11 @@ impl Material for Disney {
         rec: &crate::hit::HitRecord,
         scattered: &crate::utils::ray::Ray,
     ) -> f64 {
-        let uvw = OrthonormalBasis::new(&rec.normal);
-        let v_in = UnitVec3::from_vec3_raw(
-            uvw.world_to_onb(UnitVec3::from_vec3(-r_in.direction()).unwrap().into_inner()),
-        );
-        let v_out = UnitVec3::from_vec3_raw(
-            uvw.world_to_onb(
-                UnitVec3::from_vec3(*scattered.direction())
-                    .unwrap()
-                    .into_inner(),
-            ),
-        );
+        let v_out = UnitVec3::from_vec3(-r_in.direction()).unwrap();
+        let disney_pdf = DisneyPDF::new(self, &rec.normal, &v_out, false);
 
-        if v_in.cos_theta() <= 0.0 || v_out.cos_theta() <= 0.0 {
-            return 0.0;
-        }
-
-        // 计算半向量
-        let v_half = UnitVec3::from_vec3(v_in.as_inner() + v_out.as_inner()).unwrap();
-
-        // 使用现有的评估函数计算BRDF值
-        let (brdf_spec, _, _) = self.evaluate_brdf(&v_out, &v_half, &v_in);
-        let diffuse_brdf = self.evaluate_disney_diffuse(&v_out, &v_half, &v_in, false);
-        let sheen_brdf = self.evaluate_sheen(&v_out, &v_half, &v_in);
-        let (clearcoat_brdf, _, _) = self.evaluate_clearcoat(&v_out, &v_half, &v_in);
-
-        // 组合所有BRDF分量
-        let total_brdf = brdf_spec
-            + self.base_color * diffuse_brdf * (1.0 - self.metallic)
-            + sheen_brdf
-            + Color::new(clearcoat_brdf, clearcoat_brdf, clearcoat_brdf);
-
-        // 返回BRDF的亮度作为PDF权重
-        total_brdf.luminance() * v_out.cos_theta()
+        let (_, pdf) = disney_pdf.value(scattered.direction());
+        pdf
     }
 }
 
@@ -145,7 +118,7 @@ impl Disney {
         let dot_nv = v_out.y();
         let dot_hl = v_half.dot(&v_in);
 
-        let d = gtr1(dot_nh, lerp(0.1, 0.001, self.clearcoat_alpha));
+        let d = gtr1(dot_nh, lerp(0.1, 0.001, self.clearcoat_gloss));
         let f = schlick_f64(0.04, dot_hl);
         let gl = separable_smith_ggxg1(v_in, 0.25);
         let gv = separable_smith_ggxg1(v_out, 0.25);
@@ -266,202 +239,111 @@ impl Disney {
         rr * (fl + fv + fl * fv * (rr - 1.0))
     }
 
-    // 采样Disney BSDF - 使用多重重要性采样
-    pub fn sample_disney_bsdf(&self, v_in: &UnitVec3) -> (UnitVec3, f64) {
-        // 计算各个lobe的采样权重
-        let specular_weight = self.calculate_specular_weight();
-        let diffuse_weight = self.calculate_diffuse_weight();
-        let clearcoat_weight = self.calculate_clearcoat_weight();
-        let sheen_weight = self.calculate_sheen_weight();
+    pub fn evaluate_disney(
+        &self,
+        v_out: &UnitVec3,
+        v_in: &UnitVec3,
+        thin: bool,
+    ) -> (Color, f64, f64) {
+        let v_half = UnitVec3::from_vec3(v_in.as_inner() + v_out.as_inner())
+            .expect("The half veator can't be normalized!");
 
-        let total_weight = specular_weight + diffuse_weight + clearcoat_weight + sheen_weight;
+        let dot_nv = v_out.cos_theta();
+        let dot_nl = v_in.cos_theta();
 
-        if total_weight <= 0.0 {
-            return self.sample_cosine_weighted();
-        }
+        let mut reflectance = Color::ZERO;
+        let mut forward_pdf = 0.0;
+        let mut reverse_pdf = 0.0;
 
-        let r = Random::f64() * total_weight;
-        let mut accumulated_weight = 0.0;
+        let (p_brdf, p_diffuse, p_clearcoat, p_spec_trans) = self.calculate_lobe_pdfs();
 
-        // 根据权重选择采样的lobe
-        accumulated_weight += specular_weight;
-        if r < accumulated_weight {
-            return self.sample_specular_lobe(v_in);
-        }
+        let metallic = self.metallic;
+        let spec_trans = self.spec_trans;
 
-        accumulated_weight += diffuse_weight;
-        if r < accumulated_weight {
-            return self.sample_diffuse_lobe();
-        }
+        let diffuse_weight = (1.0 - metallic) * (1.0 - spec_trans);
+        let trans_weight = (1.0 - metallic) * spec_trans;
 
-        accumulated_weight += clearcoat_weight;
-        if r < accumulated_weight {
-            return self.sample_clearcoat_lobe();
-        }
+        let upper_hemisphere = dot_nl > 0.0 && dot_nv > 0.0;
 
-        // 默认采样sheen（简化为余弦采样）
-        self.sample_cosine_weighted()
-    }
+        if upper_hemisphere && self.clearcoat > 0.0 {
+            let (clearcoat, forward_clearcoat_pdf_w, reverse_clearcoat_pdf_w) =
+                self.evaluate_clearcoat(v_out, &v_half, v_in);
 
-    // 计算总PDF - 利用现有的评估函数
-    pub fn calculate_total_pdf(&self, v_out: &UnitVec3, v_in: &UnitVec3) -> f64 {
-        let v_half = UnitVec3::from_vec3(v_in.as_inner() + v_out.as_inner()).unwrap();
-
-        // 使用现有函数计算各个lobe的PDF
-        let (ax, ay) = calculate_anisotropic_params(self.roughness, self.anisotropic);
-        let (spec_pdf, _) = ggx_vndf_anisotropic_pdf(v_in, &v_half, v_out, ax, ay);
-        let spec_pdf = spec_pdf * (1.0 / (4.0 * v_out.dot(&v_half).abs()));
-
-        let diffuse_pdf = v_out.cos_theta() / PI;
-
-        let (_, clearcoat_pdf, _) = self.evaluate_clearcoat(v_out, &v_half, v_in);
-
-        // 计算权重
-        let specular_weight = self.calculate_specular_weight();
-        let diffuse_weight = self.calculate_diffuse_weight();
-        let clearcoat_weight = self.calculate_clearcoat_weight();
-
-        let total_weight = specular_weight + diffuse_weight + clearcoat_weight;
-
-        if total_weight <= 0.0 {
-            return diffuse_pdf;
-        }
-
-        // 混合PDF
-        (specular_weight * spec_pdf
-            + diffuse_weight * diffuse_pdf
-            + clearcoat_weight * clearcoat_pdf)
-            / total_weight
-    }
-
-    // 计算各个lobe的采样权重
-    fn calculate_specular_weight(&self) -> f64 {
-        self.metallic + (1.0 - self.metallic) * self.specular_tint
-    }
-
-    fn calculate_diffuse_weight(&self) -> f64 {
-        (1.0 - self.metallic) * (1.0 - self.specular_tint)
-    }
-
-    fn calculate_clearcoat_weight(&self) -> f64 {
-        self.clearcoat * 0.25
-    }
-
-    fn calculate_sheen_weight(&self) -> f64 {
-        self.sheen * 0.1
-    }
-
-    // 采样镜面反射lobe
-    fn sample_specular_lobe(&self, v_in: &UnitVec3) -> (UnitVec3, f64) {
-        let (ax, ay) = calculate_anisotropic_params(self.roughness, self.anisotropic);
-
-        // 使用GGX VNDF采样半向量
-        let v_half = self.sample_ggx_vndf(v_in, ax, ay);
-
-        // 计算反射方向
-        let v_out = self.reflect_vector(v_in, &v_half);
-
-        if v_out.cos_theta() <= 0.0 {
-            return (UnitVec3::from_vec3_raw(Vec3::new(0.0, 1.0, 0.0)), 0.0);
-        }
-
-        let pdf = self.calculate_total_pdf(&v_out, v_in);
-        (v_out, pdf)
-    }
-
-    // 采样漫反射lobe
-    fn sample_diffuse_lobe(&self) -> (UnitVec3, f64) {
-        self.sample_cosine_weighted()
-    }
-
-    // 采样清漆lobe
-    fn sample_clearcoat_lobe(&self) -> (UnitVec3, f64) {
-        if self.clearcoat <= 0.0 {
-            return self.sample_cosine_weighted();
-        }
-
-        let alpha = lerp(0.1, 0.001, self.clearcoat_alpha);
-        let v_half = self.sample_gtr1(alpha);
-
-        // 简化：假设视线方向垂直向上
-        let v_view = UnitVec3::from_vec3_raw(Vec3::new(0.0, 1.0, 0.0));
-        let v_out = self.reflect_vector(&v_view, &v_half);
-
-        if v_out.cos_theta() <= 0.0 {
-            return self.sample_cosine_weighted();
-        }
-
-        let pdf = self.calculate_total_pdf(&v_out, &v_view);
-        (v_out, pdf)
-    }
-
-    // 余弦加权采样
-    fn sample_cosine_weighted(&self) -> (UnitVec3, f64) {
-        let r1 = Random::f64();
-        let r2 = Random::f64();
-
-        let cos_theta = r1.sqrt();
-        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
-        let phi = 2.0 * PI * r2;
-
-        let v_out = UnitVec3::from_vec3_raw(Vec3::new(
-            sin_theta * phi.cos(),
-            cos_theta,
-            sin_theta * phi.sin(),
-        ));
-
-        let pdf = cos_theta / PI;
-        (v_out, pdf)
-    }
-
-    // 采样GGX VNDF（简化版本）
-    fn sample_ggx_vndf(&self, _v_in: &UnitVec3, ax: f64, ay: f64) -> UnitVec3 {
-        let r1 = Random::f64();
-        let r2 = Random::f64();
-
-        // 简化的GGX采样
-        let alpha = (ax + ay) * 0.5; // 简化为各向同性
-        let alpha2 = alpha * alpha;
-
-        let cos_theta = ((1.0 - r1) / (r1 * (alpha2 - 1.0) + 1.0)).sqrt();
-        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
-        let phi = 2.0 * PI * r2;
-
-        UnitVec3::from_vec3_raw(Vec3::new(
-            sin_theta * phi.cos(),
-            cos_theta,
-            sin_theta * phi.sin(),
-        ))
-    }
-
-    // 反射向量计算
-    fn reflect_vector(&self, v_in: &UnitVec3, v_half: &UnitVec3) -> UnitVec3 {
-        let dot = v_in.dot(v_half);
-        UnitVec3::from_vec3(2.0 * dot * v_half.as_inner() - v_in.as_inner()).unwrap()
-    }
-
-    // 采样GTR1分布
-    fn sample_gtr1(&self, alpha: f64) -> UnitVec3 {
-        let r1 = Random::f64();
-        let r2 = Random::f64();
-
-        let a2 = alpha * alpha;
-        let cos_theta = if a2 < 1.0 {
-            ((1.0 - r1.powf(2.0 / (1.0 + alpha)))
-                / (1.0 - r1.powf(2.0 / (1.0 + alpha)) + r1.powf(2.0 / (1.0 + alpha))))
-            .sqrt()
-        } else {
-            r1.sqrt()
+            reflectance += Vec3::new(clearcoat, clearcoat, clearcoat);
+            forward_pdf += p_clearcoat * forward_clearcoat_pdf_w;
+            reverse_pdf += p_clearcoat * reverse_clearcoat_pdf_w;
         };
 
-        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
-        let phi = 2.0 * PI * r2;
+        if diffuse_weight > 0.0 {
+            let forward_diffuse_pdf_w = v_in.cos_theta().abs();
+            let reverse_diffuse_pdf_w = v_out.cos_theta().abs();
+            let diffuse = self.evaluate_disney_diffuse(v_out, &v_half, v_in, thin);
 
-        UnitVec3::from_vec3_raw(Vec3::new(
-            sin_theta * phi.cos(),
-            cos_theta,
-            sin_theta * phi.sin(),
-        ))
+            let sheen = self.evaluate_sheen(v_out, &v_half, v_in);
+
+            reflectance += diffuse_weight * (diffuse * self.base_color + sheen);
+            forward_pdf += p_diffuse * forward_diffuse_pdf_w;
+            reverse_pdf += p_diffuse * reverse_diffuse_pdf_w;
+        };
+
+        if trans_weight > 0.0 {
+            let rscaled = if thin {
+                thin_transmission_roughness(self.ior, self.roughness)
+            } else {
+                self.roughness
+            };
+
+            let (tax, tay) = calculate_anisotropic_params(rscaled, self.anisotropic);
+
+            let transmission =
+                self.evaluate_disney_spec_transmission(v_out, &v_half, v_in, tax, tay, thin);
+            reflectance += trans_weight * transmission;
+
+            let (forward_transmissive_pdf_w, reverse_transmissive_pdf_w) =
+                ggx_vndf_anisotropic_pdf(v_in, &v_half, v_out, tax, tay);
+
+            let dot_lh = v_half.dot(&v_in);
+            let dot_vh = v_half.dot(&v_out);
+
+            forward_pdf += p_spec_trans * forward_transmissive_pdf_w
+                / (dot_lh + self.relative_ior * dot_vh).powi(2);
+            reverse_pdf += p_spec_trans * reverse_transmissive_pdf_w
+                / (dot_vh + self.relative_ior * dot_lh).powi(2);
+        }
+
+        if upper_hemisphere {
+            let (specular, forward_metallic_pdf_w, reverse_metallic_pdf_w) =
+                self.evaluate_brdf(v_out, &v_half, v_in);
+
+            reflectance += specular;
+            forward_pdf += p_brdf * forward_metallic_pdf_w / (4.0 * v_out.dot(&v_half).abs());
+            reverse_pdf += p_brdf * reverse_metallic_pdf_w / (4.0 * v_in.dot(&v_half).abs());
+        }
+
+        reflectance = reflectance * dot_nl.abs();
+
+        (reflectance, forward_pdf, reverse_pdf)
+    }
+
+    fn calculate_lobe_pdfs(&self) -> (f64, f64, f64, f64) {
+        let metallic_brdf = self.metallic;
+        let specular_bsdf = (1.0 - self.metallic) * self.spec_trans;
+        let dielectric_brdf = (1.0 - self.spec_trans) * (1.0 - self.metallic);
+
+        let specular_weight = metallic_brdf + dielectric_brdf;
+        let transmission_weight = specular_bsdf;
+        let diffuse_weight = dielectric_brdf;
+        let clearcoat_weight = 1.0 * self.clearcoat.clamp(0.0, 1.0);
+
+        let norm =
+            1.0 / (specular_weight + transmission_weight + diffuse_weight + clearcoat_weight);
+
+        let p_specular = specular_weight * norm;
+        let p_spec_trans = transmission_weight * norm;
+        let p_diffuse = diffuse_weight * norm;
+        let p_clearcoat = clearcoat_weight * norm;
+
+        (p_specular, p_diffuse, p_clearcoat, p_spec_trans)
     }
 }
 
@@ -554,4 +436,202 @@ fn ggx_vndf_anisotropic_pdf(
 
 fn thin_transmission_roughness(ior: f64, roughness: f64) -> f64 {
     ((0.65 * ior - 0.35) * roughness).clamp(0.0, 1.0)
+}
+
+pub struct DisneyPDF<'a> {
+    material: &'a Disney,
+    uvw: OrthonormalBasis,
+    v_out: UnitVec3,
+    thin: bool,
+}
+
+impl<'a> DisneyPDF<'a> {
+    pub fn new(material: &'a Disney, normal: &UnitVec3, v_out: &UnitVec3, thin: bool) -> Self {
+        let uvw = OrthonormalBasis::new(normal);
+        let v_out = UnitVec3::from_vec3_raw(uvw.world_to_onb(v_out.into_inner()));
+
+        Self {
+            material,
+            uvw,
+            v_out,
+            thin,
+        }
+    }
+
+    fn sample_disney_brdf(&self) -> Option<UnitVec3> {
+        let v_out = &self.v_out;
+
+        let (ax, ay) =
+            calculate_anisotropic_params(self.material.roughness, self.material.anisotropic);
+
+        let r0 = Random::f64();
+        let r1 = Random::f64();
+        let v_half = sample_ggx_vndf_anisotropic(&v_out, ax, ay, r0, r1);
+
+        let v_in = UnitVec3::from_vec3(v_out.reflect(&v_half)).unwrap();
+
+        if v_in.cos_theta() <= 0.0 {
+            None
+        } else {
+            Some(UnitVec3::from_vec3(self.uvw.onb_to_world(v_in.into_inner())).unwrap())
+        }
+    }
+
+    fn sample_disney_clearcoat(&self) -> Option<UnitVec3> {
+        let v_out = self.v_out;
+
+        let a: f64 = 0.25;
+        let a2 = a * a;
+
+        let r0 = Random::f64();
+        let r1 = Random::f64();
+        let cos_theta = ((1.0 - a2.powf(1.0 - r0)) / (1.0 - a2)).max(0.0).sqrt();
+        let sin_theta = (1.0 - cos_theta * cos_theta).max(0.0).sqrt();
+        let phi = 2.0 * PI * r1;
+
+        let mut v_half = UnitVec3::from_vec3_raw(Vec3::new(
+            sin_theta * phi.cos(),
+            cos_theta,
+            sin_theta * phi.sin(),
+        ));
+        if v_half.dot(&v_out) < 0.0 {
+            v_half = -v_half;
+        }
+
+        let v_in = v_out.reflect(&v_half);
+        if v_in.dot(&v_out) < 0.0 {
+            None
+        } else {
+            Some(UnitVec3::from_vec3(self.uvw.onb_to_world(v_in)).unwrap())
+        }
+    }
+
+    fn sample_disney_diffuse(&self) -> Option<UnitVec3> {
+        let v_out = &self.v_out;
+        let sign = v_out.cos_theta().signum();
+
+        let v_in = UnitVec3::from_vec3_raw(sign * UnitVec3::random_cosine_direction().into_inner());
+
+        let dot_nl = v_in.cos_theta();
+        if dot_nl == 0.0 {
+            None
+        } else {
+            Some(UnitVec3::from_vec3(self.uvw.onb_to_world(v_in.into_inner())).unwrap())
+        }
+    }
+
+    fn disney_spec_transmission(&self) -> Option<UnitVec3> {
+        let v_out = &self.v_out;
+
+        if v_out.cos_theta() == 0.0 {
+            return None;
+        }
+
+        let rscaled = if self.thin {
+            thin_transmission_roughness(self.material.ior, self.material.roughness)
+        } else {
+            self.material.roughness
+        };
+
+        let (tax, tay) = calculate_anisotropic_params(rscaled, self.material.anisotropic);
+
+        let r0 = Random::f64();
+        let r1 = Random::f64();
+        let v_half = sample_ggx_vndf_anisotropic(v_out, tax, tay, r0, r1);
+
+        let mut dot_vh = v_out.dot(&v_half);
+        if v_half.y() < 0.0 {
+            dot_vh = -dot_vh;
+        }
+
+        let ni = if v_out.y() > 0.0 {
+            1.0
+        } else {
+            self.material.ior
+        };
+        let nt = if v_out.y() > 0.0 {
+            self.material.ior
+        } else {
+            1.0
+        };
+        let relative_ior = ni / nt;
+
+        let f = dielectric(dot_vh, 1.0, self.material.ior);
+
+        let v_in = if Random::f64() <= f {
+            UnitVec3::from_vec3(v_out.reflect(&v_half)).unwrap()
+        } else {
+            if self.thin {
+                let wi = v_out.reflect(&v_half);
+                UnitVec3::new(wi.x(), -wi.y(), wi.z()).unwrap()
+            } else {
+                if let Some(wi) = v_out.refract(&v_half, relative_ior) {
+                    wi
+                } else {
+                    UnitVec3::from_vec3(v_out.reflect(&v_half)).unwrap()
+                }
+            }
+        };
+
+        if v_in.cos_theta() == 0.0 {
+            None
+        } else {
+            Some(UnitVec3::from_vec3(self.uvw.onb_to_world(v_in.into_inner())).unwrap())
+        }
+    }
+}
+
+impl<'a> PDF for DisneyPDF<'a> {
+    fn value(&self, direction: &Vec3) -> (Color, f64) {
+        let v_in = UnitVec3::from_vec3_raw(
+            self.uvw
+                .world_to_onb(UnitVec3::from_vec3(*direction).unwrap().into_inner()),
+        );
+        let (attentuation, f_pdf, _) = self.material.evaluate_disney(&self.v_out, &v_in, self.thin);
+        (attentuation, f_pdf)
+    }
+
+    fn generate(&self) -> Option<UnitVec3> {
+        let (p_specular, p_diffuse, p_clearcoat, p_transmission) =
+            self.material.calculate_lobe_pdfs();
+
+        let p = Random::f64();
+
+        if p <= p_specular {
+            self.sample_disney_brdf()
+        } else if p <= p_specular + p_clearcoat {
+            self.sample_disney_clearcoat()
+        } else if p <= p_specular + p_diffuse + p_clearcoat {
+            self.sample_disney_diffuse()
+        } else if p_transmission >= 0.0 {
+            self.disney_spec_transmission()
+        } else {
+            panic!("The conditions should be exhausted!");
+        }
+    }
+}
+
+fn sample_ggx_vndf_anisotropic(v_out: &UnitVec3, ax: f64, ay: f64, u1: f64, u2: f64) -> UnitVec3 {
+    let v = UnitVec3::new(v_out.x() * ax, v_out.y(), v_out.z() * ay).unwrap();
+
+    let t1 = if v.y() < 0.9999 {
+        v.cross(&UnitVec3::Y_AXIS)
+    } else {
+        UnitVec3::X_AXIS.into_inner()
+    };
+    let t2 = t1.cross(&v);
+
+    let a = 1.0 / (1.0 + v.y());
+    let r = u1.sqrt();
+    let phi = if u2 < a {
+        (u2 / a) * PI
+    } else {
+        PI + (u2 - a) / (1.0 - a) * PI
+    };
+    let p1 = r * phi.cos();
+    let p2 = r * phi.sin() * if u2 < a { 1.0 } else { v.y() };
+
+    let n = p1 * t1 + p2 * t2 + (1.0 - p1 * p1 - p2 * p2).max(0.0).sqrt() * v.as_inner();
+
+    UnitVec3::from_vec3(Vec3::new(ax * n.x(), n.y(), ay * n.z())).unwrap()
 }

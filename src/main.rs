@@ -47,34 +47,20 @@ fn main() {
 fn disney_scene() -> RgbImage {
     let mut world = Hittables::default();
 
-    let disney_mat = Arc::new(Disney {
-        base_color: Color::new(0.9, 1.0, 0.9),
-        roughness: 0.01,
+    let copper = Arc::new(Disney {
+        base_color: Color::WHITE * 10.0,
+        roughness: 0.0,
         anisotropic: 0.0,
         sheen: 0.0,
         sheen_tint: 0.0,
         clearcoat: 0.0,
-        clearcoat_alpha: 0.0,
-        relative_ior: 1.7,
-        specular_tint: 0.0,
-        metallic: 0.0,
-        ior: 1.7,
-        flatness: 0.0,
-    });
-
-    let copper = Arc::new(Disney {
-        base_color: Color::new(0.955008, 0.637427, 0.538163),
-        roughness: 0.01,
-        anisotropic: 0.0,
-        sheen: 0.0,
-        sheen_tint: 0.0,
-        clearcoat: 0.5,
-        clearcoat_alpha: 1.0,
+        clearcoat_gloss: 0.0,
         relative_ior: 1.5,
-        specular_tint: 0.3,
+        specular_tint: 0.0,
         metallic: 1.0,
         ior: 1.5,
         flatness: 0.0,
+        spec_trans: 0.0,
     });
 
     world.add(Box::new(Sphere::new(

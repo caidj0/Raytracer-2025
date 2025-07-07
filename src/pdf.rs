@@ -2,54 +2,55 @@ use std::f64::consts::PI;
 
 use crate::{
     hit::Hittable,
-    material::disney::Disney,
     utils::{
-        onb::OrthonormalBasis,
-        random::Random,
-        vec3::{Point3, UnitVec3, Vec3},
+        color::Color, onb::OrthonormalBasis, random::Random, vec3::{Point3, UnitVec3, Vec3}
     },
 };
 
 pub trait PDF {
-    fn value(&self, direction: &Vec3) -> f64;
-    fn generate(&self) -> UnitVec3; // 需不需要是单位向量？
+    fn value(&self, direction: &Vec3) -> (Color, f64);
+    fn generate(&self) -> Option<UnitVec3>;
 }
 
-pub struct SpherePDF;
+pub struct SpherePDF {
+    pub attenuation: Color,
+}
 
 impl PDF for SpherePDF {
-    fn value(&self, _direction: &Vec3) -> f64 {
-        1.0 / (4.0 * PI)
+    fn value(&self, _direction: &Vec3) -> (Vec3, f64) {
+        (self.attenuation, 1.0 / (4.0 * PI))
     }
 
-    fn generate(&self) -> UnitVec3 {
-        UnitVec3::random_unit_vector()
+    fn generate(&self) -> Option<UnitVec3> {
+        Some(UnitVec3::random_unit_vector())
     }
 }
 
 pub struct CosinePDF {
+    attentuation: Color,
     uvw: OrthonormalBasis,
 }
 
 impl CosinePDF {
-    pub fn new(w: &UnitVec3) -> CosinePDF {
+    pub fn new(attentuation: Color, w: &UnitVec3) -> CosinePDF {
         CosinePDF {
+            attentuation,
             uvw: OrthonormalBasis::new(w),
         }
     }
 }
 
 impl PDF for CosinePDF {
-    fn value(&self, direction: &Vec3) -> f64 {
+    fn value(&self, direction: &Vec3) -> (Vec3, f64) {
         let cosine_theta = Vec3::dot(&UnitVec3::from_vec3(*direction).unwrap(), self.uvw.v());
-        f64::max(0.0, cosine_theta / PI)
+        (self.attentuation, f64::max(0.0, cosine_theta / PI))
     }
 
-    fn generate(&self) -> UnitVec3 {
-        UnitVec3::from_vec3_raw(
+    fn generate(&self) -> Option<UnitVec3> {
+        Some(UnitVec3::from_vec3_raw(
             self.uvw
                 .onb_to_world(UnitVec3::random_cosine_direction().into_inner()),
-        )
+        ))
     }
 }
 
@@ -65,15 +66,16 @@ impl<'a> HittablePDF<'a> {
 }
 
 impl<'a> PDF for HittablePDF<'a> {
-    fn value(&self, direction: &Vec3) -> f64 {
-        self.objects.pdf_value(&self.origin, direction)
+    fn value(&self, direction: &Vec3) -> (Color, f64) {
+        (Color::BLACK, self.objects.pdf_value(&self.origin, direction))
     }
 
-    fn generate(&self) -> UnitVec3 {
-        self.objects.random(&self.origin)
+    fn generate(&self) -> Option<UnitVec3> {
+        Some(self.objects.random(&self.origin))
     }
 }
 
+// 混合两者的 PDF，但只使用前者的 attentuation
 pub struct MixturePDF<'a> {
     p: [&'a dyn PDF; 2],
 }
@@ -85,49 +87,17 @@ impl<'a> MixturePDF<'a> {
 }
 
 impl<'a> PDF for MixturePDF<'a> {
-    fn value(&self, direction: &Vec3) -> f64 {
-        0.5 * self.p[0].value(direction) + 0.5 * self.p[1].value(direction)
+    fn value(&self, direction: &Vec3) -> (Color, f64) {
+        let (attentuation, value0) = self.p[0].value(direction);
+        let (_, value1) = self.p[1].value(direction);
+        (attentuation, value0 * 0.5 + value1 * 0.5)
     }
 
-    fn generate(&self) -> UnitVec3 {
+    fn generate(&self) -> Option<UnitVec3> {
         if Random::f64() < 0.5 {
             self.p[0].generate()
         } else {
             self.p[1].generate()
         }
-    }
-}
-
-pub struct DisneyPDF<'a> {
-    material: &'a Disney,
-    uvw: OrthonormalBasis,
-    v_in: UnitVec3,
-}
-
-impl<'a> DisneyPDF<'a> {
-    pub fn new(material: &'a Disney, normal: &UnitVec3, v_in: &UnitVec3) -> Self {
-        let uvw = OrthonormalBasis::new(normal);
-        let v_in_local = UnitVec3::from_vec3_raw(uvw.world_to_onb(v_in.into_inner()));
-
-        Self {
-            material,
-            uvw,
-            v_in: v_in_local,
-        }
-    }
-}
-
-impl<'a> PDF for DisneyPDF<'a> {
-    fn value(&self, direction: &Vec3) -> f64 {
-        let v_out = UnitVec3::from_vec3_raw(
-            self.uvw
-                .world_to_onb(UnitVec3::from_vec3(*direction).unwrap().into_inner()),
-        );
-        self.material.calculate_total_pdf(&v_out, &self.v_in)
-    }
-
-    fn generate(&self) -> UnitVec3 {
-        let (v_out_local, _) = self.material.sample_disney_bsdf(&self.v_in);
-        UnitVec3::from_vec3_raw(self.uvw.onb_to_world(v_out_local.into_inner()))
     }
 }
