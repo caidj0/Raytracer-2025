@@ -139,7 +139,7 @@ impl Hittable for Sphere {
             &UnitVec3::from_vec3(direction).expect("The direction should be normalizable!"),
         );
 
-        uvw.transform(Self::random_to_sphere(self.radius, distance_squared))
+        uvw.onb_to_world(Self::random_to_sphere(self.radius, distance_squared))
     }
 }
 

@@ -309,9 +309,9 @@ impl UnitVec3 {
         let r2 = Random::f64();
 
         let phi = 2.0 * PI * r1;
-        let x = phi.cos() * r2.sqrt();
-        let y = phi.sin() * r2.sqrt();
-        let z = (1.0 - r2).sqrt();
+        let x = phi.sin() * r2.sqrt();
+        let y = (1.0 - r2).sqrt();
+        let z = phi.cos() * r2.sqrt();
 
         UnitVec3::from_vec3_raw(Vec3::new(x, y, z))
     }

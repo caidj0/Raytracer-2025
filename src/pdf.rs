@@ -40,13 +40,13 @@ impl CosinePDF {
 
 impl PDF for CosinePDF {
     fn value(&self, direction: &Vec3) -> f64 {
-        let cosine_theta = Vec3::dot(&UnitVec3::from_vec3(*direction).unwrap(), self.uvw.w());
+        let cosine_theta = Vec3::dot(&UnitVec3::from_vec3(*direction).unwrap(), self.uvw.v());
         f64::max(0.0, cosine_theta / PI)
     }
 
     fn generate(&self) -> Vec3 {
         self.uvw
-            .transform(UnitVec3::random_cosine_direction().into_inner())
+            .onb_to_world(UnitVec3::random_cosine_direction().into_inner())
     }
 }
 
