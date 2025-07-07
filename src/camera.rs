@@ -239,7 +239,7 @@ impl Camera {
                     pdf_ptr
                 };
 
-                let scattered = Ray::new_with_time(rec.p, mixed_pdf.generate(), *r.time());
+                let scattered = Ray::new_with_time(rec.p, mixed_pdf.generate().into_inner(), *r.time());
                 let pdf_value = mixed_pdf.value(scattered.direction());
                 assert_ne!(pdf_value, 0.0);
 
@@ -253,6 +253,8 @@ impl Camera {
             }
         };
 
-        color_from_emission + color_from_scatter
+        let ret = color_from_emission + color_from_scatter;
+        assert!(!ret.e().iter().any(|x| x.is_nan()));
+        ret
     }
 }

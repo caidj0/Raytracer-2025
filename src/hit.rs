@@ -54,7 +54,7 @@ pub trait Hittable: Send + Sync {
     }
 
     #[allow(unused_variables)]
-    fn random(&self, origin: &Point3) -> Vec3 {
+    fn random(&self, origin: &Point3) -> UnitVec3 {
         unimplemented!()
     }
 }

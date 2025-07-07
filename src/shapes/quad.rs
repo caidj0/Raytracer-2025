@@ -119,9 +119,9 @@ impl Hittable for Quad {
         distance_squared / (cosine * self.area)
     }
 
-    fn random(&self, origin: &Point3) -> Vec3 {
+    fn random(&self, origin: &Point3) -> UnitVec3 {
         let p = self.anchor + (Random::f64() * self.u) + (Random::f64() * self.v);
-        p - origin
+        UnitVec3::from_vec3(p - origin).unwrap()
     }
 }
 

@@ -115,7 +115,7 @@ impl Hittable for Triangle {
         distance_squared / (cosine * self.area)
     }
 
-    fn random(&self, origin: &Point3) -> Vec3 {
+    fn random(&self, origin: &Point3) -> UnitVec3 {
         let mut u_l = Random::f64();
         let mut v_l = Random::f64();
 
@@ -124,6 +124,6 @@ impl Hittable for Triangle {
         }
 
         let p = self.anchor + (u_l * self.u) + (v_l * self.v);
-        p - origin
+        UnitVec3::from_vec3(p - origin).unwrap()
     }
 }

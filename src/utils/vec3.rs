@@ -348,7 +348,7 @@ impl UnitVec3 {
     }
 
     pub fn sin_theta2(&self) -> f64 {
-        1.0 - self.cos_theta2()
+        (1.0 - self.cos_theta2()).clamp(0.0, 1.0)
     }
 
     pub fn tan_theta(&self) -> f64 {

@@ -1,30 +1,33 @@
-use std::{f64::consts::PI, sync::Arc};
+use std::f64::consts::PI;
 
 use crate::{
-    material::Material,
-    texture::Texture,
+    material::{Material, ScatterRecord, ScatterType},
+    pdf::DisneyPDF,
     utils::{
         color::Color,
         fresnel::{dielectric, schlick, schlick_f64, schlick_r0_from_relative_ior, schlick_weight},
         lerp,
+        onb::OrthonormalBasis,
+        random::Random,
         vec3::{UnitVec3, Vec3},
     },
 };
 
+#[derive(Debug, Clone, Copy)]
 pub struct Disney {
-    base_color: Color,
-    roughness: f64,
-    anisotropic: f64,
+    pub base_color: Color,
+    pub roughness: f64,
+    pub anisotropic: f64,
 
-    sheen: f64,
-    sheen_tint: f64,
-    clearcoat: f64,
-    clearcoat_alpha: f64,
-    relative_ior: f64,
-    specular_tint: f64,
-    metallic: f64,
-    ior: f64,
-    flatness: f64,
+    pub sheen: f64,
+    pub sheen_tint: f64,
+    pub clearcoat: f64,
+    pub clearcoat_alpha: f64,
+    pub relative_ior: f64,
+    pub specular_tint: f64,
+    pub metallic: f64,
+    pub ior: f64,
+    pub flatness: f64,
 }
 
 impl Material for Disney {
@@ -33,11 +36,15 @@ impl Material for Disney {
         r_in: &crate::utils::ray::Ray,
         rec: &crate::hit::HitRecord,
     ) -> Option<super::ScatterRecord> {
-        None
-    }
+        let v_in = UnitVec3::from_vec3(-r_in.direction()).unwrap();
+        let disney_pdf = Box::new(DisneyPDF::new(self, &rec.normal, &v_in));
 
-    fn emitted(&self, r_in: &crate::utils::ray::Ray, rec: &crate::hit::HitRecord) -> Color {
-        Color::BLACK
+        let attenuation = self.base_color;
+
+        Some(ScatterRecord {
+            attenuation: attenuation,
+            scatter_type: ScatterType::PDF(disney_pdf),
+        })
     }
 
     fn scattering_pdf(
@@ -46,8 +53,39 @@ impl Material for Disney {
         rec: &crate::hit::HitRecord,
         scattered: &crate::utils::ray::Ray,
     ) -> f64 {
-        // unimplemented!("If using pdf, this function should be overloaded!")
-        0.0
+        let uvw = OrthonormalBasis::new(&rec.normal);
+        let v_in = UnitVec3::from_vec3_raw(
+            uvw.world_to_onb(UnitVec3::from_vec3(-r_in.direction()).unwrap().into_inner()),
+        );
+        let v_out = UnitVec3::from_vec3_raw(
+            uvw.world_to_onb(
+                UnitVec3::from_vec3(*scattered.direction())
+                    .unwrap()
+                    .into_inner(),
+            ),
+        );
+
+        if v_in.cos_theta() <= 0.0 || v_out.cos_theta() <= 0.0 {
+            return 0.0;
+        }
+
+        // 计算半向量
+        let v_half = UnitVec3::from_vec3(v_in.as_inner() + v_out.as_inner()).unwrap();
+
+        // 使用现有的评估函数计算BRDF值
+        let (brdf_spec, _, _) = self.evaluate_brdf(&v_out, &v_half, &v_in);
+        let diffuse_brdf = self.evaluate_disney_diffuse(&v_out, &v_half, &v_in, false);
+        let sheen_brdf = self.evaluate_sheen(&v_out, &v_half, &v_in);
+        let (clearcoat_brdf, _, _) = self.evaluate_clearcoat(&v_out, &v_half, &v_in);
+
+        // 组合所有BRDF分量
+        let total_brdf = brdf_spec
+            + self.base_color * diffuse_brdf * (1.0 - self.metallic)
+            + sheen_brdf
+            + Color::new(clearcoat_brdf, clearcoat_brdf, clearcoat_brdf);
+
+        // 返回BRDF的亮度作为PDF权重
+        total_brdf.luminance() * v_out.cos_theta()
     }
 }
 
@@ -78,11 +116,10 @@ impl Disney {
         let reverse_pdf = reverse_pdf * (1.0 / (4.0 * v_in.dot(&v_half).abs()));
 
         let value = d * gl * gv * f / (4.0 * dot_nl * dot_nv);
-
         (value, forward_pdf, reverse_pdf)
     }
 
-    fn evaluate_sheen(&self, v_out: &UnitVec3, v_half: &UnitVec3, v_in: &UnitVec3) -> Color {
+    fn evaluate_sheen(&self, _v_out: &UnitVec3, v_half: &UnitVec3, v_in: &UnitVec3) -> Color {
         if self.sheen <= 0.0 {
             return Color::BLACK;
         }
@@ -228,6 +265,204 @@ impl Disney {
 
         rr * (fl + fv + fl * fv * (rr - 1.0))
     }
+
+    // 采样Disney BSDF - 使用多重重要性采样
+    pub fn sample_disney_bsdf(&self, v_in: &UnitVec3) -> (UnitVec3, f64) {
+        // 计算各个lobe的采样权重
+        let specular_weight = self.calculate_specular_weight();
+        let diffuse_weight = self.calculate_diffuse_weight();
+        let clearcoat_weight = self.calculate_clearcoat_weight();
+        let sheen_weight = self.calculate_sheen_weight();
+
+        let total_weight = specular_weight + diffuse_weight + clearcoat_weight + sheen_weight;
+
+        if total_weight <= 0.0 {
+            return self.sample_cosine_weighted();
+        }
+
+        let r = Random::f64() * total_weight;
+        let mut accumulated_weight = 0.0;
+
+        // 根据权重选择采样的lobe
+        accumulated_weight += specular_weight;
+        if r < accumulated_weight {
+            return self.sample_specular_lobe(v_in);
+        }
+
+        accumulated_weight += diffuse_weight;
+        if r < accumulated_weight {
+            return self.sample_diffuse_lobe();
+        }
+
+        accumulated_weight += clearcoat_weight;
+        if r < accumulated_weight {
+            return self.sample_clearcoat_lobe();
+        }
+
+        // 默认采样sheen（简化为余弦采样）
+        self.sample_cosine_weighted()
+    }
+
+    // 计算总PDF - 利用现有的评估函数
+    pub fn calculate_total_pdf(&self, v_out: &UnitVec3, v_in: &UnitVec3) -> f64 {
+        let v_half = UnitVec3::from_vec3(v_in.as_inner() + v_out.as_inner()).unwrap();
+
+        // 使用现有函数计算各个lobe的PDF
+        let (ax, ay) = calculate_anisotropic_params(self.roughness, self.anisotropic);
+        let (spec_pdf, _) = ggx_vndf_anisotropic_pdf(v_in, &v_half, v_out, ax, ay);
+        let spec_pdf = spec_pdf * (1.0 / (4.0 * v_out.dot(&v_half).abs()));
+
+        let diffuse_pdf = v_out.cos_theta() / PI;
+
+        let (_, clearcoat_pdf, _) = self.evaluate_clearcoat(v_out, &v_half, v_in);
+
+        // 计算权重
+        let specular_weight = self.calculate_specular_weight();
+        let diffuse_weight = self.calculate_diffuse_weight();
+        let clearcoat_weight = self.calculate_clearcoat_weight();
+
+        let total_weight = specular_weight + diffuse_weight + clearcoat_weight;
+
+        if total_weight <= 0.0 {
+            return diffuse_pdf;
+        }
+
+        // 混合PDF
+        (specular_weight * spec_pdf
+            + diffuse_weight * diffuse_pdf
+            + clearcoat_weight * clearcoat_pdf)
+            / total_weight
+    }
+
+    // 计算各个lobe的采样权重
+    fn calculate_specular_weight(&self) -> f64 {
+        self.metallic + (1.0 - self.metallic) * self.specular_tint
+    }
+
+    fn calculate_diffuse_weight(&self) -> f64 {
+        (1.0 - self.metallic) * (1.0 - self.specular_tint)
+    }
+
+    fn calculate_clearcoat_weight(&self) -> f64 {
+        self.clearcoat * 0.25
+    }
+
+    fn calculate_sheen_weight(&self) -> f64 {
+        self.sheen * 0.1
+    }
+
+    // 采样镜面反射lobe
+    fn sample_specular_lobe(&self, v_in: &UnitVec3) -> (UnitVec3, f64) {
+        let (ax, ay) = calculate_anisotropic_params(self.roughness, self.anisotropic);
+
+        // 使用GGX VNDF采样半向量
+        let v_half = self.sample_ggx_vndf(v_in, ax, ay);
+
+        // 计算反射方向
+        let v_out = self.reflect_vector(v_in, &v_half);
+
+        if v_out.cos_theta() <= 0.0 {
+            return (UnitVec3::from_vec3_raw(Vec3::new(0.0, 1.0, 0.0)), 0.0);
+        }
+
+        let pdf = self.calculate_total_pdf(&v_out, v_in);
+        (v_out, pdf)
+    }
+
+    // 采样漫反射lobe
+    fn sample_diffuse_lobe(&self) -> (UnitVec3, f64) {
+        self.sample_cosine_weighted()
+    }
+
+    // 采样清漆lobe
+    fn sample_clearcoat_lobe(&self) -> (UnitVec3, f64) {
+        if self.clearcoat <= 0.0 {
+            return self.sample_cosine_weighted();
+        }
+
+        let alpha = lerp(0.1, 0.001, self.clearcoat_alpha);
+        let v_half = self.sample_gtr1(alpha);
+
+        // 简化：假设视线方向垂直向上
+        let v_view = UnitVec3::from_vec3_raw(Vec3::new(0.0, 1.0, 0.0));
+        let v_out = self.reflect_vector(&v_view, &v_half);
+
+        if v_out.cos_theta() <= 0.0 {
+            return self.sample_cosine_weighted();
+        }
+
+        let pdf = self.calculate_total_pdf(&v_out, &v_view);
+        (v_out, pdf)
+    }
+
+    // 余弦加权采样
+    fn sample_cosine_weighted(&self) -> (UnitVec3, f64) {
+        let r1 = Random::f64();
+        let r2 = Random::f64();
+
+        let cos_theta = r1.sqrt();
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+        let phi = 2.0 * PI * r2;
+
+        let v_out = UnitVec3::from_vec3_raw(Vec3::new(
+            sin_theta * phi.cos(),
+            cos_theta,
+            sin_theta * phi.sin(),
+        ));
+
+        let pdf = cos_theta / PI;
+        (v_out, pdf)
+    }
+
+    // 采样GGX VNDF（简化版本）
+    fn sample_ggx_vndf(&self, _v_in: &UnitVec3, ax: f64, ay: f64) -> UnitVec3 {
+        let r1 = Random::f64();
+        let r2 = Random::f64();
+
+        // 简化的GGX采样
+        let alpha = (ax + ay) * 0.5; // 简化为各向同性
+        let alpha2 = alpha * alpha;
+
+        let cos_theta = ((1.0 - r1) / (r1 * (alpha2 - 1.0) + 1.0)).sqrt();
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+        let phi = 2.0 * PI * r2;
+
+        UnitVec3::from_vec3_raw(Vec3::new(
+            sin_theta * phi.cos(),
+            cos_theta,
+            sin_theta * phi.sin(),
+        ))
+    }
+
+    // 反射向量计算
+    fn reflect_vector(&self, v_in: &UnitVec3, v_half: &UnitVec3) -> UnitVec3 {
+        let dot = v_in.dot(v_half);
+        UnitVec3::from_vec3(2.0 * dot * v_half.as_inner() - v_in.as_inner()).unwrap()
+    }
+
+    // 采样GTR1分布
+    fn sample_gtr1(&self, alpha: f64) -> UnitVec3 {
+        let r1 = Random::f64();
+        let r2 = Random::f64();
+
+        let a2 = alpha * alpha;
+        let cos_theta = if a2 < 1.0 {
+            ((1.0 - r1.powf(2.0 / (1.0 + alpha)))
+                / (1.0 - r1.powf(2.0 / (1.0 + alpha)) + r1.powf(2.0 / (1.0 + alpha))))
+            .sqrt()
+        } else {
+            r1.sqrt()
+        };
+
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+        let phi = 2.0 * PI * r2;
+
+        UnitVec3::from_vec3_raw(Vec3::new(
+            sin_theta * phi.cos(),
+            cos_theta,
+            sin_theta * phi.sin(),
+        ))
+    }
 }
 
 fn calculate_tint(base_color: Color) -> Color {
@@ -274,6 +509,7 @@ fn anisotropic_separable_smith_ggxg1(w: &UnitVec3, v_half: &UnitVec3, ax: f64, a
     }
 
     let abs_tan_theta = w.tan_theta().abs();
+    assert!(!abs_tan_theta.is_nan());
     if abs_tan_theta.is_infinite() {
         return 0.0;
     }

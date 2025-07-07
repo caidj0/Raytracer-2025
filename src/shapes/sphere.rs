@@ -132,14 +132,14 @@ impl Hittable for Sphere {
         1.0 / solid_angle
     }
 
-    fn random(&self, origin: &Point3) -> Vec3 {
+    fn random(&self, origin: &Point3) -> UnitVec3 {
         let direction = self.center.at(0.0) - origin;
         let distance_squared = direction.length_squared();
         let uvw = OrthonormalBasis::new(
             &UnitVec3::from_vec3(direction).expect("The direction should be normalizable!"),
         );
 
-        uvw.onb_to_world(Self::random_to_sphere(self.radius, distance_squared))
+        UnitVec3::from_vec3(uvw.onb_to_world(Self::random_to_sphere(self.radius, distance_squared))).unwrap()
     }
 }
 

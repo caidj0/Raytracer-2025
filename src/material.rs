@@ -14,14 +14,14 @@ use crate::{
     },
 };
 
-pub enum ScatterType {
-    PDF(Box<dyn PDF>),
+pub enum ScatterType<'a> {
+    PDF(Box<dyn PDF + 'a>),
     Ray(Ray),
 }
 
-pub struct ScatterRecord {
+pub struct ScatterRecord<'a> {
     pub attenuation: Color,
-    pub scatter_type: ScatterType,
+    pub scatter_type: ScatterType<'a>,
 }
 
 pub trait Material: Send + Sync {

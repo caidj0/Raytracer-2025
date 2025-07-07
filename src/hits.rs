@@ -3,7 +3,7 @@ use rand::seq::IndexedRandom;
 use crate::{
     aabb::AABB,
     hit::Hittable,
-    utils::{interval::Interval, random::Random},
+    utils::{interval::Interval, random::Random, vec3::UnitVec3},
 };
 
 #[derive(Default)]
@@ -66,7 +66,7 @@ impl Hittable for Hittables {
         ret
     }
 
-    fn random(&self, origin: &crate::utils::vec3::Point3) -> crate::utils::vec3::Vec3 {
+    fn random(&self, origin: &crate::utils::vec3::Point3) -> UnitVec3 {
         let object = self
             .objects
             .choose(&mut Random::rng())
