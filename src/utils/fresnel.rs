@@ -28,7 +28,7 @@ pub fn dielectric(cos_theta_in: f64, n_in: f64, n_out: f64) -> f64 {
         cos_theta_in = -cos_theta_in;
     }
 
-    let sin_theta_in = (1.0 - cos_theta_in * cos_theta_in).sqrt();
+    let sin_theta_in = (1.0 - cos_theta_in * cos_theta_in).max(0.0).sqrt();
     let sin_theta_out = n_in / n_out * sin_theta_in;
 
     if sin_theta_out >= 1.0 {

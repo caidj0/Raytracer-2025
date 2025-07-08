@@ -90,6 +90,11 @@ impl<'a> PDF for MixturePDF<'a> {
     fn value(&self, direction: &Vec3) -> (Color, f64) {
         let (attentuation, value0) = self.p[0].value(direction);
         let (_, value1) = self.p[1].value(direction);
+        if value0 == 0.0 && value1 == 0.0 {
+            self.p[0].value(direction);
+            self.p[1].value(direction);
+            panic!();
+        }
         (attentuation, value0 * 0.5 + value1 * 0.5)
     }
 

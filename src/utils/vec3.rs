@@ -51,6 +51,11 @@ impl Vec3 {
         *self - 2.0 * Vec3::dot(self, normal) * *normal.as_inner()
     }
 
+    // 入射方向已经翻转用这个
+    pub fn reflect2(&self, normal: &UnitVec3) -> Vec3 {
+        -self + 2.0 * Vec3::dot(self, &normal) * *normal.as_inner()
+    }
+
     pub fn x(&self) -> f64 {
         self.e[0]
     }
@@ -319,6 +324,18 @@ impl UnitVec3 {
     pub fn refract(&self, normal: &UnitVec3, relative_eta: f64) -> Option<UnitVec3> {
         let cos_theta = (-self).dot(normal).min(1.0);
         let out_perp = relative_eta * (self.as_inner() + cos_theta * normal.as_inner());
+        let out_parallel_length = (1.0 - out_perp.length_squared()).sqrt();
+        if out_parallel_length.is_nan() {
+            return None;
+        }
+        let out_parallel = -out_parallel_length * normal.as_inner();
+        Some(UnitVec3::from_vec3_raw(out_perp + out_parallel))
+    }
+
+    // 入射光已经反向用这个
+    pub fn refract2(&self, normal: &UnitVec3, relative_eta: f64) -> Option<UnitVec3> {
+        let cos_theta = self.dot(normal).min(1.0);
+        let out_perp = relative_eta * (-self.as_inner() + cos_theta * normal.as_inner());
         let out_parallel_length = (1.0 - out_perp.length_squared()).sqrt();
         if out_parallel_length.is_nan() {
             return None;

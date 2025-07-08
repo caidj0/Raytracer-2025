@@ -29,6 +29,7 @@ pub struct Disney {
     pub ior: f64,
     pub flatness: f64,
     pub spec_trans: f64,
+    pub diff_trans: f64,
 }
 
 impl Material for Disney {
@@ -114,8 +115,6 @@ impl Disney {
 
         // N, H, L, V 分别代表 法线，半向量，入射向量，出射向量
         let dot_nh = v_half.y();
-        let dot_nl = v_in.y();
-        let dot_nv = v_out.y();
         let dot_hl = v_half.dot(&v_in);
 
         let d = gtr1(dot_nh, lerp(0.1, 0.001, self.clearcoat_gloss));
@@ -124,8 +123,8 @@ impl Disney {
         let gv = separable_smith_ggxg1(v_out, 0.25);
 
         let value = 0.25 * self.clearcoat * d * f * gl * gv;
-        let forward_pdf = d / (4.0 * dot_nl.abs());
-        let reverse_pdf = d / (4.0 * dot_nv.abs());
+        let forward_pdf = d / (4.0 * v_out.dot(&v_half).abs());
+        let reverse_pdf = d / (4.0 * v_in.dot(&v_half).abs());
 
         (value, forward_pdf, reverse_pdf)
     }
@@ -396,7 +395,7 @@ fn anisotropic_separable_smith_ggxg1(w: &UnitVec3, v_half: &UnitVec3, ax: f64, a
         return 0.0;
     }
 
-    let a = (w.cos_phi() * ax * ax + w.sin_phi2() * ay * ay).sqrt();
+    let a = (w.cos_phi2() * ax * ax + w.sin_phi2() * ay * ay).sqrt();
     let a2_tan_theta2 = (a * abs_tan_theta).powi(2);
 
     let lambda = 0.5 * (-1.0 + (1.0 + a2_tan_theta2).sqrt());
@@ -468,7 +467,7 @@ impl<'a> DisneyPDF<'a> {
         let r1 = Random::f64();
         let v_half = sample_ggx_vndf_anisotropic(&v_out, ax, ay, r0, r1);
 
-        let v_in = UnitVec3::from_vec3(v_out.reflect(&v_half)).unwrap();
+        let v_in = UnitVec3::from_vec3(v_out.reflect2(&v_half)).unwrap();
 
         if v_in.cos_theta() <= 0.0 {
             None
@@ -498,7 +497,7 @@ impl<'a> DisneyPDF<'a> {
             v_half = -v_half;
         }
 
-        let v_in = v_out.reflect(&v_half);
+        let v_in = v_out.reflect2(&v_half);
         if v_in.dot(&v_out) < 0.0 {
             None
         } else {
@@ -510,7 +509,10 @@ impl<'a> DisneyPDF<'a> {
         let v_out = &self.v_out;
         let sign = v_out.cos_theta().signum();
 
-        let v_in = UnitVec3::from_vec3_raw(sign * UnitVec3::random_cosine_direction().into_inner());
+        let mut v_in = UnitVec3::from_vec3_raw(sign * UnitVec3::random_cosine_direction().into_inner());
+        if Random::f64() <= self.material.diff_trans {
+            v_in = -v_in;
+        }
 
         let dot_nl = v_in.cos_theta();
         if dot_nl == 0.0 {
@@ -559,16 +561,16 @@ impl<'a> DisneyPDF<'a> {
         let f = dielectric(dot_vh, 1.0, self.material.ior);
 
         let v_in = if Random::f64() <= f {
-            UnitVec3::from_vec3(v_out.reflect(&v_half)).unwrap()
+            UnitVec3::from_vec3(v_out.reflect2(&v_half)).unwrap()
         } else {
             if self.thin {
-                let wi = v_out.reflect(&v_half);
+                let wi = v_out.reflect2(&v_half);
                 UnitVec3::new(wi.x(), -wi.y(), wi.z()).unwrap()
             } else {
-                if let Some(wi) = v_out.refract(&v_half, relative_ior) {
+                if let Some(wi) = v_out.refract2(&v_half, relative_ior) {
                     wi
                 } else {
-                    UnitVec3::from_vec3(v_out.reflect(&v_half)).unwrap()
+                    UnitVec3::from_vec3(v_out.reflect2(&v_half)).unwrap()
                 }
             }
         };
@@ -614,10 +616,11 @@ impl<'a> PDF for DisneyPDF<'a> {
 fn sample_ggx_vndf_anisotropic(v_out: &UnitVec3, ax: f64, ay: f64, u1: f64, u2: f64) -> UnitVec3 {
     let v = UnitVec3::new(v_out.x() * ax, v_out.y(), v_out.z() * ay).unwrap();
 
+    // t1 是单位矢量
     let t1 = if v.y() < 0.9999 {
-        v.cross(&UnitVec3::Y_AXIS)
+        UnitVec3::from_vec3_raw(v.cross(&UnitVec3::Y_AXIS))
     } else {
-        UnitVec3::X_AXIS.into_inner()
+        UnitVec3::X_AXIS
     };
     let t2 = t1.cross(&v);
 
@@ -629,9 +632,9 @@ fn sample_ggx_vndf_anisotropic(v_out: &UnitVec3, ax: f64, ay: f64, u1: f64, u2: 
         PI + (u2 - a) / (1.0 - a) * PI
     };
     let p1 = r * phi.cos();
-    let p2 = r * phi.sin() * if u2 < a { 1.0 } else { v.y() };
+    let p2 = r * phi.sin() * (if u2 < a { 1.0 } else { v.y() });
 
-    let n = p1 * t1 + p2 * t2 + (1.0 - p1 * p1 - p2 * p2).max(0.0).sqrt() * v.as_inner();
+    let n = p1 * t1.as_inner() + p2 * t2 + (1.0 - p1 * p1 - p2 * p2).max(0.0).sqrt() * v.as_inner();
 
     UnitVec3::from_vec3(Vec3::new(ax * n.x(), n.y(), ay * n.z())).unwrap()
 }
