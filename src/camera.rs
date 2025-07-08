@@ -244,10 +244,8 @@ impl Camera {
                     let (attentuation, pdf_value) = mixed_pdf.value(scattered.direction());
                     assert_ne!(pdf_value, 0.0);
     
-                    let scattering_pdf = rec.mat.scattering_pdf(r, &rec, &scattered);
-    
                     let sample_color = self.ray_color(&scattered, depth - 1, world, lights);
-                    (attentuation * scattering_pdf * sample_color) / pdf_value
+                    (attentuation * sample_color) / pdf_value
                 } else {
                     Color::BLACK
                 }

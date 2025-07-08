@@ -40,11 +40,10 @@ impl Material for Disney {
     ) -> Option<super::ScatterRecord> {
         let v_out = UnitVec3::from_vec3(-r_in.direction()).unwrap();
 
-        // 这个 thin 能做什么？
-        let disney_pdf = Box::new(DisneyPDF::new(self, &rec.normal, &v_out, false));
+        let disney_pdf = Box::new(DisneyPDF::new(self, &rec.normal, &v_out, true));
 
         Some(ScatterRecord {
-            attenuation: self.base_color,
+            attenuation: Color::WHITE, // This value is not used, the real attenuation is calculated in the PDF value
             scatter_type: ScatterType::PDF(disney_pdf),
         })
     }
@@ -56,7 +55,7 @@ impl Material for Disney {
         scattered: &crate::utils::ray::Ray,
     ) -> f64 {
         let v_out = UnitVec3::from_vec3(-r_in.direction()).unwrap();
-        let disney_pdf = DisneyPDF::new(self, &rec.normal, &v_out, false);
+        let disney_pdf = DisneyPDF::new(self, &rec.normal, &v_out, true);
 
         let (_, pdf) = disney_pdf.value(scattered.direction());
         pdf

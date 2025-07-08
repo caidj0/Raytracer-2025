@@ -49,11 +49,11 @@ impl Material for EmptyMaterial {
     // 从 Lambertian 复制而来
 
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
-        let attenuation = Color::new(0.75, 0.75, 0.75);
-        let pdf_ptr = Box::new(CosinePDF::new(attenuation, &rec.normal));
+        let albedo = Color::new(0.75, 0.75, 0.75);
+        let pdf_ptr = Box::new(CosinePDF::new(albedo, &rec.normal));
 
         Some(ScatterRecord {
-            attenuation,
+            attenuation: Color::WHITE, // This value is not used, the real attenuation is calculated in the PDF value
             scatter_type: ScatterType::PDF(pdf_ptr),
         })
     }
@@ -78,11 +78,11 @@ impl Lambertian {
 
 impl Material for Lambertian {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
-        let attenuation = self.texture.value(rec.u, rec.v, &rec.p);
-        let pdf_ptr = Box::new(CosinePDF::new(attenuation, &rec.normal));
+        let albedo = self.texture.value(rec.u, rec.v, &rec.p);
+        let pdf_ptr = Box::new(CosinePDF::new(albedo, &rec.normal));
 
         Some(ScatterRecord {
-            attenuation,
+            attenuation: Color::WHITE, // This value is not used, the real attenuation is calculated in the PDF value
             scatter_type: ScatterType::PDF(pdf_ptr),
         })
     }
@@ -203,11 +203,11 @@ impl Isotropic {
 
 impl Material for Isotropic {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
-        let attenuation = self.texture.value(rec.u, rec.v, &rec.p);
-        let pdf_ptr = Box::new(SpherePDF { attenuation });
+        let albedo = self.texture.value(rec.u, rec.v, &rec.p);
+        let pdf_ptr = Box::new(SpherePDF { attenuation: albedo });
 
         Some(ScatterRecord {
-            attenuation,
+            attenuation: Color::WHITE, // This value is not used, the real attenuation is calculated in the PDF value
             scatter_type: ScatterType::PDF(pdf_ptr),
         })
     }

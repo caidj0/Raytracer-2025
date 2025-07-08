@@ -18,7 +18,11 @@ pub struct SpherePDF {
 
 impl PDF for SpherePDF {
     fn value(&self, _direction: &Vec3) -> (Vec3, f64) {
-        (self.attenuation, 1.0 / (4.0 * PI))
+        let pdf_value = 1.0 / (4.0 * PI);
+        // For isotropic scattering: f * cos(theta) = (albedo / (4*PI)) * 1
+        // Note: for volume scattering, there's no cos(theta) term
+        let brdf_value = self.attenuation / (4.0 * PI);
+        (brdf_value, pdf_value)
     }
 
     fn generate(&self) -> Option<UnitVec3> {
@@ -43,7 +47,10 @@ impl CosinePDF {
 impl PDF for CosinePDF {
     fn value(&self, direction: &Vec3) -> (Vec3, f64) {
         let cosine_theta = Vec3::dot(&UnitVec3::from_vec3(*direction).unwrap(), self.uvw.v());
-        (self.attentuation, f64::max(0.0, cosine_theta / PI))
+        let pdf_value = f64::max(0.0, cosine_theta / PI);
+        // For Lambertian BRDF: f * cos(theta) = (albedo/PI) * cos(theta)
+        let brdf_value = self.attentuation * cosine_theta.max(0.0) / PI;
+        (brdf_value, pdf_value)
     }
 
     fn generate(&self) -> Option<UnitVec3> {

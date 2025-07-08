@@ -49,15 +49,15 @@ fn disney_scene() -> RgbImage {
 
     let disney = Arc::new(Disney {
         base_color: Color::new(0.955008, 0.637427, 0.538163),
-        roughness: 0.01,
+        roughness: 0.3,
         anisotropic: 0.0,
         sheen: 0.0,
         sheen_tint: 0.0,
         clearcoat: 0.0,
         clearcoat_gloss: 0.0,
         relative_ior: 1.5,
-        specular_tint: 0.3,
-        metallic: 1.0,
+        specular_tint: 0.0,
+        metallic: 0.0,
         ior: 1.5,
         flatness: 0.0,
         spec_trans: 0.0,
@@ -68,21 +68,21 @@ fn disney_scene() -> RgbImage {
     let metal = Arc::new(Metal::new(Color::WHITE, 0.5));
     let die = Arc::new(Dielectric::new(1.5));
 
-    world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 0.0), 1.0, disney)));
-    let light = Sphere::new(
-        Vec3::new(0.0, 1.5, 0.0),
-        0.2,
-        Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(Color::new(
-            10.0, 10.0, 10.0,
-        ))))),
-    );
-    world.add(Box::new(light.clone()));
+    world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 0.0), 1.0, lab)));
+    // let light = Sphere::new(
+    //     Vec3::new(0.0, 1.5, 0.0),
+    //     0.2,
+    //     Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(Color::new(
+    //         10.0, 10.0, 10.0,
+    //     ))))),
+    // );
+    // world.add(Box::new(light.clone()));
 
     let mut camera = Camera::default();
 
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 1920;
-    camera.samples_per_pixel = 100;
+    camera.samples_per_pixel = 500;
     camera.max_depth = 10;
 
     camera.vertical_fov_in_degrees = 40.0;
@@ -94,10 +94,11 @@ fn disney_scene() -> RgbImage {
     camera.toon_map = ToonMap::ACES;
 
     let mut back_tex = ImageTexture::new("citrus_orchard_road_puresky_4k.exr");
+    let solid_back = SolidColor::new(Color::new(0.1, 0.1, 0.1));
     back_tex.raw = true;
-    camera.background.texture = Arc::new(SolidColor::new(Color::new(0.1, 0.1, 0.1)));
+    camera.background.texture = Arc::new(back_tex);
 
-    camera.render(&world, Some(&light))
+    camera.render(&world, None)
 }
 
 fn background_scene() -> RgbImage {
