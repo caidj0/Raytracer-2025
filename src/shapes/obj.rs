@@ -134,7 +134,7 @@ impl Wavefont {
 
 fn load_object(
     file_name: &str,
-    mats: &Vec<Arc<dyn Material>>,
+    mats: &[Arc<dyn Material>],
     obs: &mut Hittables,
     object: &tobj::Model,
     normal: &Option<Arc<ImageTexture>>,

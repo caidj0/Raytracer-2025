@@ -30,6 +30,8 @@ pub struct Disney {
     pub flatness: f64,
     pub spec_trans: f64,
     pub diff_trans: f64,
+
+    pub thin: bool,
 }
 
 impl Material for Disney {
@@ -40,7 +42,7 @@ impl Material for Disney {
     ) -> Option<super::ScatterRecord> {
         let v_out = UnitVec3::from_vec3(-r_in.direction()).unwrap();
 
-        let disney_pdf = Box::new(DisneyPDF::new(self, &rec.normal, &v_out, false));
+        let disney_pdf = Box::new(DisneyPDF::new(self, &rec.normal, &v_out, self.thin));
 
         Some(ScatterRecord {
             attenuation: Color::new(10000.0, 10000.0, 10000.0), // This value is not used, the real attenuation is calculated in the PDF value
@@ -55,7 +57,7 @@ impl Material for Disney {
         scattered: &crate::utils::ray::Ray,
     ) -> f64 {
         let v_out = UnitVec3::from_vec3(-r_in.direction()).unwrap();
-        let disney_pdf = DisneyPDF::new(self, &rec.normal, &v_out, false);
+        let disney_pdf = DisneyPDF::new(self, &rec.normal, &v_out, self.thin);
 
         let (_, pdf) = disney_pdf.value(scattered.direction());
         pdf
@@ -85,8 +87,8 @@ impl Disney {
 
         let (forward_pdf, reverse_pdf) = ggx_vndf_anisotropic_pdf(v_in, v_half, v_out, ax, ay);
 
-        let forward_pdf = forward_pdf / (4.0 * v_in.dot(&v_half).abs());
-        let reverse_pdf = reverse_pdf / (4.0 * v_out.dot(&v_half).abs());
+        let forward_pdf = forward_pdf / (4.0 * v_in.dot(v_half).abs());
+        let reverse_pdf = reverse_pdf / (4.0 * v_out.dot(v_half).abs());
 
         let value = d * gl * gv * f / (4.0 * dot_nl * dot_nv);
         (value, forward_pdf, reverse_pdf)
@@ -114,7 +116,7 @@ impl Disney {
 
         // N, H, L, V 分别代表 法线，半向量，入射向量，出射向量
         let dot_nh = v_half.y();
-        let dot_hl = v_half.dot(&v_in);
+        let dot_hl = v_half.dot(v_in);
 
         let d = gtr1(dot_nh, lerp(0.1, 0.001, self.clearcoat_gloss));
         let f = schlick_f64(0.04, dot_hl);
@@ -122,14 +124,14 @@ impl Disney {
         let gv = separable_smith_ggxg1(v_out, 0.25);
 
         let value = 0.25 * self.clearcoat * d * f * gl * gv;
-        let forward_pdf = d / (4.0 * v_in.dot(&v_half).abs());
-        let reverse_pdf = d / (4.0 * v_out.dot(&v_half).abs());
+        let forward_pdf = d / (4.0 * v_in.dot(v_half).abs());
+        let reverse_pdf = d / (4.0 * v_out.dot(v_half).abs());
 
         (value, forward_pdf, reverse_pdf)
     }
 
     fn disney_fresnel(&self, v_out: &UnitVec3, v_half: &UnitVec3, v_in: &UnitVec3) -> Color {
-        let dot_hv = v_half.dot(&v_out);
+        let dot_hv = v_half.dot(v_out);
 
         let tint = calculate_tint(self.base_color);
 
@@ -138,7 +140,7 @@ impl Disney {
         let r0 = lerp(r0, self.base_color, self.metallic);
 
         let dielectric_fresnel = dielectric(dot_hv, 1.0, self.ior);
-        let metallic_fresnel = schlick(r0, v_in.dot(&v_half));
+        let metallic_fresnel = schlick(r0, v_in.dot(v_half));
 
         lerp(
             Vec3::new(dielectric_fresnel, dielectric_fresnel, dielectric_fresnel),
@@ -161,8 +163,8 @@ impl Disney {
 
         let abs_dot_nl = v_in.cos_theta().abs();
         let abs_dot_nv = v_out.cos_theta().abs();
-        let dot_hl = v_half.dot(&v_in);
-        let dot_hv = v_half.dot(&v_out);
+        let dot_hl = v_half.dot(v_in);
+        let dot_hv = v_half.dot(v_out);
         let abs_dot_hl = dot_hl.abs();
         let abs_dot_hv = dot_hv.abs();
 
@@ -199,7 +201,7 @@ impl Disney {
         let hanrahan_krueger = if thin && self.flatness > 0.0 {
             let roughness = self.roughness * self.roughness;
 
-            let dot_hl = v_half.dot(&v_in);
+            let dot_hl = v_half.dot(v_in);
             let fss90 = dot_hl * dot_hl * roughness;
             let fss = lerp(1.0, fss90, fl) * lerp(1.0, fss90, fv);
 
@@ -243,11 +245,18 @@ impl Disney {
         v_in: &UnitVec3,
         thin: bool,
     ) -> (Color, f64, f64) {
-        let v_half = UnitVec3::from_vec3(v_in.as_inner() + v_out.as_inner())
-            .expect("The half veator can't be normalized!");
-
         let dot_nv = v_out.cos_theta();
         let dot_nl = v_in.cos_theta();
+
+        let is_transmission = dot_nv * dot_nl < 0.0;
+
+        let v_half = if is_transmission {
+            UnitVec3::from_vec3(v_in.as_inner() - v_out.as_inner())
+                .expect("The half veator can't be normalized!")
+        } else {
+            UnitVec3::from_vec3(v_in.as_inner() + v_out.as_inner())
+                .expect("The half veator can't be normalized!")
+        };
 
         let mut reflectance = Color::ZERO;
         let mut forward_pdf = 0.0;
@@ -293,15 +302,17 @@ impl Disney {
 
             let (tax, tay) = calculate_anisotropic_params(rscaled, self.anisotropic);
 
+            let t_v_out = if is_transmission { -v_out } else { *v_out };
+
             let transmission =
-                self.evaluate_disney_spec_transmission(v_out, &v_half, v_in, tax, tay, thin);
+                self.evaluate_disney_spec_transmission(&t_v_out, &v_half, v_in, tax, tay, thin);
             reflectance += trans_weight * transmission;
 
             let (forward_transmissive_pdf_w, reverse_transmissive_pdf_w) =
-                ggx_vndf_anisotropic_pdf(v_in, &v_half, v_out, tax, tay);
+                ggx_vndf_anisotropic_pdf(v_in, &v_half, &t_v_out, tax, tay);
 
-            let dot_lh = v_half.dot(&v_in);
-            let dot_vh = v_half.dot(&v_out);
+            let dot_lh = v_half.dot(v_in);
+            let dot_vh = v_half.dot(&t_v_out);
 
             forward_pdf += p_spec_trans * forward_transmissive_pdf_w
                 / (dot_lh + self.relative_ior * dot_vh).powi(2);
@@ -318,7 +329,12 @@ impl Disney {
             reverse_pdf += p_brdf * reverse_metallic_pdf_w;
         }
 
-        reflectance = reflectance * dot_nl.abs();
+        reflectance *= dot_nl.abs();
+
+        if forward_pdf == 0.0 {
+            println!("Opps!");
+            panic!();
+        }
 
         (reflectance, forward_pdf, reverse_pdf)
     }
@@ -383,7 +399,7 @@ fn ggx_anisotropic_d(v_half: &UnitVec3, ax: f64, ay: f64) -> f64 {
 }
 
 fn anisotropic_separable_smith_ggxg1(w: &UnitVec3, v_half: &UnitVec3, ax: f64, ay: f64) -> f64 {
-    let dot_hw = w.dot(&v_half);
+    let dot_hw = w.dot(v_half);
     if dot_hw <= 0.0 {
         return 0.0;
     }
@@ -464,7 +480,7 @@ impl<'a> DisneyPDF<'a> {
 
         let r0 = Random::f64();
         let r1 = Random::f64();
-        let v_half = sample_ggx_vndf_anisotropic(&v_out, ax, ay, r0, r1);
+        let v_half = sample_ggx_vndf_anisotropic(v_out, ax, ay, r0, r1);
 
         let v_in = UnitVec3::from_vec3(v_out.reflect2(&v_half)).unwrap();
 
@@ -508,7 +524,8 @@ impl<'a> DisneyPDF<'a> {
         let v_out = &self.v_out;
         let sign = v_out.cos_theta().signum();
 
-        let mut v_in = UnitVec3::from_vec3_raw(sign * UnitVec3::random_cosine_direction().into_inner());
+        let mut v_in =
+            UnitVec3::from_vec3_raw(sign * UnitVec3::random_cosine_direction().into_inner());
         if Random::f64() <= self.material.diff_trans {
             v_in = -v_in;
         }
@@ -561,17 +578,13 @@ impl<'a> DisneyPDF<'a> {
 
         let v_in = if Random::f64() <= f {
             UnitVec3::from_vec3(v_out.reflect2(&v_half)).unwrap()
+        } else if self.thin {
+            let wi = v_out.reflect2(&v_half);
+            UnitVec3::new(wi.x(), -wi.y(), wi.z()).unwrap()
+        } else if let Some(wi) = v_out.refract2(&v_half, relative_ior) {
+            wi
         } else {
-            if self.thin {
-                let wi = v_out.reflect2(&v_half);
-                UnitVec3::new(wi.x(), -wi.y(), wi.z()).unwrap()
-            } else {
-                if let Some(wi) = v_out.refract2(&v_half, relative_ior) {
-                    wi
-                } else {
-                    UnitVec3::from_vec3(v_out.reflect2(&v_half)).unwrap()
-                }
-            }
+            UnitVec3::from_vec3(v_out.reflect2(&v_half)).unwrap()
         };
 
         if v_in.cos_theta() == 0.0 {
@@ -615,7 +628,8 @@ impl<'a> PDF for DisneyPDF<'a> {
 fn sample_ggx_vndf_anisotropic(v_out: &UnitVec3, ax: f64, ay: f64, u1: f64, u2: f64) -> UnitVec3 {
     let v = UnitVec3::new(v_out.x() * ax, v_out.y(), v_out.z() * ay).unwrap();
 
-    let t1 = if v.y() < 0.9999999 { // 此处的突变会导致分层，把右侧设的非常接近 1 就看不到分层了
+    let t1 = if v.y() < 0.9999999 {
+        // 此处的突变会导致分层，把右侧设的非常接近 1 就看不到分层了
         UnitVec3::from_vec3_raw(v.cross(&UnitVec3::Y_AXIS))
     } else {
         UnitVec3::X_AXIS

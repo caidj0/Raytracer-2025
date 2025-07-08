@@ -53,7 +53,7 @@ impl Vec3 {
 
     // 入射方向已经翻转用这个
     pub fn reflect2(&self, normal: &UnitVec3) -> Vec3 {
-        -self + 2.0 * Vec3::dot(self, &normal) * *normal.as_inner()
+        -self + 2.0 * Vec3::dot(self, normal) * *normal.as_inner()
     }
 
     pub fn x(&self) -> f64 {

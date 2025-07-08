@@ -204,7 +204,9 @@ impl Isotropic {
 impl Material for Isotropic {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let albedo = self.texture.value(rec.u, rec.v, &rec.p);
-        let pdf_ptr = Box::new(SpherePDF { attenuation: albedo });
+        let pdf_ptr = Box::new(SpherePDF {
+            attenuation: albedo,
+        });
 
         Some(ScatterRecord {
             attenuation: Color::WHITE, // This value is not used, the real attenuation is calculated in the PDF value
@@ -223,7 +225,11 @@ impl Material for Transparent {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         Some(ScatterRecord {
             attenuation: Color::WHITE,
-            scatter_type: ScatterType::Ray(Ray::new_with_time(rec.p, *r_in.direction(), *r_in.time())),
+            scatter_type: ScatterType::Ray(Ray::new_with_time(
+                rec.p,
+                *r_in.direction(),
+                *r_in.time(),
+            )),
         })
     }
 }

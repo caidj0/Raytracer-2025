@@ -3,7 +3,10 @@ use std::f64::consts::PI;
 use crate::{
     hit::Hittable,
     utils::{
-        color::Color, onb::OrthonormalBasis, random::Random, vec3::{Point3, UnitVec3, Vec3}
+        color::Color,
+        onb::OrthonormalBasis,
+        random::Random,
+        vec3::{Point3, UnitVec3, Vec3},
     },
 };
 
@@ -54,10 +57,9 @@ impl PDF for CosinePDF {
     }
 
     fn generate(&self) -> Option<UnitVec3> {
-        Some(UnitVec3::from_vec3_raw(
-            self.uvw
-                .onb_to_world(UnitVec3::random_cosine_direction().into_inner()),
-        ))
+        Some(UnitVec3::from_vec3_raw(self.uvw.onb_to_world(
+            UnitVec3::random_cosine_direction().into_inner(),
+        )))
     }
 }
 
@@ -74,7 +76,10 @@ impl<'a> HittablePDF<'a> {
 
 impl<'a> PDF for HittablePDF<'a> {
     fn value(&self, direction: &Vec3) -> (Color, f64) {
-        (Color::BLACK, self.objects.pdf_value(&self.origin, direction))
+        (
+            Color::BLACK,
+            self.objects.pdf_value(&self.origin, direction),
+        )
     }
 
     fn generate(&self) -> Option<UnitVec3> {

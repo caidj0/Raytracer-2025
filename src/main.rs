@@ -33,7 +33,7 @@ fn main() {
         4 => background_scene(),
         _ => disney_scene(),
     };
-    let path_string = format!("output/{}/{}.png", "book4", "image9");
+    let path_string = format!("output/{}/{}.png", "book4", "image11");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -49,7 +49,7 @@ fn disney_scene() -> RgbImage {
 
     let disney = Arc::new(Disney {
         base_color: Color::WHITE,
-        roughness: 1.0,
+        roughness: 0.0,
         anisotropic: 0.0,
         sheen: 0.0,
         sheen_tint: 0.0,
@@ -60,29 +60,37 @@ fn disney_scene() -> RgbImage {
         metallic: 0.0,
         ior: 1.5,
         flatness: 0.0,
-        spec_trans: 0.0,
+        spec_trans: 1.0,
         diff_trans: 0.0,
+
+        thin: false,
     });
 
-    let lab = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Color::WHITE))));
-    let metal = Arc::new(Metal::new(Color::WHITE, 0.5));
-    let die = Arc::new(Dielectric::new(1.5));
+    // let lab = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Color::WHITE))));
+    // let metal = Arc::new(Metal::new(Color::WHITE, 0.5));
+    // let die = Arc::new(Dielectric::new(1.5));
 
-    world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 0.0), 1.0, disney)));
-    let light = Sphere::new(
-        Vec3::new(0.0, 1.5, 0.0),
-        0.2,
-        Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(Color::new(
-            3.0, 3.0, 3.0,
-        ))))),
-    );
-    world.add(Box::new(light.clone()));
+    // world.add(Box::new(Quad::new(
+    //     Vec3::new(-1.0, 0.0, -1.0),
+    //     Vec3::new(2.0, 0.0, 0.0),
+    //     Vec3::new(0.0, 0.0, 2.0),
+    //     disney,
+    // )));
+    world.add(Box::new(Sphere::new(Vec3::ZERO, 1.0, disney)));
+    // let light = Sphere::new(
+    //     Vec3::new(0.0, -0.3, 0.0),
+    //     0.2,
+    //     Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(Color::new(
+    //         3.0, 3.0, 3.0,
+    //     ))))),
+    // );
+    // world.add(Box::new(light.clone()));
 
     let mut camera = Camera::default();
 
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 1920;
-    camera.samples_per_pixel = 500;
+    camera.samples_per_pixel = 50;
     camera.max_depth = 10;
 
     camera.vertical_fov_in_degrees = 40.0;
@@ -93,10 +101,10 @@ fn disney_scene() -> RgbImage {
     camera.defocus_angle_in_degrees = 0.0;
     camera.toon_map = ToonMap::ACES;
 
-    let mut back_tex = ImageTexture::new("citrus_orchard_road_puresky_4k.exr");
-    let solid_back = SolidColor::new(Color::new(0.1, 0.1, 0.1));
+    let mut back_tex = ImageTexture::new("rogland_clear_night_4k.exr");
+    // let solid_back = SolidColor::new(Color::new(0.1, 0.1, 0.1));
     back_tex.raw = true;
-    camera.background.texture = Arc::new(solid_back);
+    camera.background.texture = Arc::new(back_tex);
 
     camera.render(&world, None)
 }

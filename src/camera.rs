@@ -243,13 +243,12 @@ impl Camera {
                     let scattered = Ray::new_with_time(rec.p, generate_vec.into_inner(), *r.time());
                     let (attentuation, pdf_value) = mixed_pdf.value(scattered.direction());
                     assert_ne!(pdf_value, 0.0);
-    
+
                     let sample_color = self.ray_color(&scattered, depth - 1, world, lights);
                     (attentuation * sample_color) / pdf_value
                 } else {
                     Color::BLACK
                 }
-
             }
             ScatterType::Ray(skip_pdf_ray) => {
                 scatter_record.attenuation * self.ray_color(&skip_pdf_ray, depth - 1, world, lights)
