@@ -33,7 +33,7 @@ fn main() {
         4 => background_scene(),
         _ => disney_scene(),
     };
-    let path_string = format!("output/{}/{}.png", "book4", "image8");
+    let path_string = format!("output/{}/{}.png", "book4", "image9");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -49,11 +49,11 @@ fn disney_scene() -> RgbImage {
 
     let disney = Arc::new(Disney {
         base_color: Color::WHITE,
-        roughness: 0.3,
+        roughness: 1.0,
         anisotropic: 0.0,
         sheen: 0.0,
         sheen_tint: 0.0,
-        clearcoat: 1.0,
+        clearcoat: 0.0,
         clearcoat_gloss: 0.0,
         relative_ior: 1.5,
         specular_tint: 0.0,
@@ -69,14 +69,14 @@ fn disney_scene() -> RgbImage {
     let die = Arc::new(Dielectric::new(1.5));
 
     world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 0.0), 1.0, disney)));
-    // let light = Sphere::new(
-    //     Vec3::new(0.0, 1.5, 0.0),
-    //     0.2,
-    //     Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(Color::new(
-    //         10.0, 10.0, 10.0,
-    //     ))))),
-    // );
-    // world.add(Box::new(light.clone()));
+    let light = Sphere::new(
+        Vec3::new(0.0, 1.5, 0.0),
+        0.2,
+        Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(Color::new(
+            3.0, 3.0, 3.0,
+        ))))),
+    );
+    world.add(Box::new(light.clone()));
 
     let mut camera = Camera::default();
 
@@ -96,7 +96,7 @@ fn disney_scene() -> RgbImage {
     let mut back_tex = ImageTexture::new("citrus_orchard_road_puresky_4k.exr");
     let solid_back = SolidColor::new(Color::new(0.1, 0.1, 0.1));
     back_tex.raw = true;
-    camera.background.texture = Arc::new(back_tex);
+    camera.background.texture = Arc::new(solid_back);
 
     camera.render(&world, None)
 }

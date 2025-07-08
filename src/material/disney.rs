@@ -85,8 +85,8 @@ impl Disney {
 
         let (forward_pdf, reverse_pdf) = ggx_vndf_anisotropic_pdf(v_in, v_half, v_out, ax, ay);
 
-        let forward_pdf = forward_pdf * (1.0 / (4.0 * v_out.dot(&v_half).abs()));
-        let reverse_pdf = reverse_pdf * (1.0 / (4.0 * v_in.dot(&v_half).abs()));
+        let forward_pdf = forward_pdf / (4.0 * v_in.dot(&v_half).abs());
+        let reverse_pdf = reverse_pdf / (4.0 * v_out.dot(&v_half).abs());
 
         let value = d * gl * gv * f / (4.0 * dot_nl * dot_nv);
         (value, forward_pdf, reverse_pdf)
@@ -122,8 +122,8 @@ impl Disney {
         let gv = separable_smith_ggxg1(v_out, 0.25);
 
         let value = 0.25 * self.clearcoat * d * f * gl * gv;
-        let forward_pdf = d / (4.0 * v_out.dot(&v_half).abs());
-        let reverse_pdf = d / (4.0 * v_in.dot(&v_half).abs());
+        let forward_pdf = d / (4.0 * v_in.dot(&v_half).abs());
+        let reverse_pdf = d / (4.0 * v_out.dot(&v_half).abs());
 
         (value, forward_pdf, reverse_pdf)
     }
@@ -314,8 +314,8 @@ impl Disney {
                 self.evaluate_brdf(v_out, &v_half, v_in);
 
             reflectance += specular;
-            forward_pdf += p_brdf * forward_metallic_pdf_w / (4.0 * v_out.dot(&v_half).abs());
-            reverse_pdf += p_brdf * reverse_metallic_pdf_w / (4.0 * v_in.dot(&v_half).abs());
+            forward_pdf += p_brdf * forward_metallic_pdf_w;
+            reverse_pdf += p_brdf * reverse_metallic_pdf_w;
         }
 
         reflectance = reflectance * dot_nl.abs();
@@ -419,15 +419,15 @@ fn ggx_vndf_anisotropic_pdf(
 ) -> (f64, f64) {
     let d = ggx_anisotropic_d(v_half, ax, ay);
 
-    let abs_dot_nl = v_in.cos_theta().abs();
-    let abs_dot_hl = v_half.dot(v_in).abs();
-    let g1v = anisotropic_separable_smith_ggxg1(v_out, v_half, ax, ay);
-    let forward_pdf_weight = g1v * abs_dot_hl * d / abs_dot_nl;
-
     let abs_dot_nv = v_out.cos_theta().abs();
     let abs_dot_hv = v_half.dot(v_out).abs();
+    let g1v = anisotropic_separable_smith_ggxg1(v_out, v_half, ax, ay);
+    let forward_pdf_weight = g1v * abs_dot_hv * d / abs_dot_nv;
+
+    let abs_dot_nl = v_in.cos_theta().abs();
+    let abs_dot_hl = v_half.dot(v_in).abs();
     let g1l = anisotropic_separable_smith_ggxg1(v_in, v_half, ax, ay);
-    let reverse_pdf_weight = g1l * abs_dot_hv * d / abs_dot_nv;
+    let reverse_pdf_weight = g1l * abs_dot_hl * d / abs_dot_nl;
 
     (forward_pdf_weight, reverse_pdf_weight)
 }
