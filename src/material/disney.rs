@@ -40,10 +40,10 @@ impl Material for Disney {
     ) -> Option<super::ScatterRecord> {
         let v_out = UnitVec3::from_vec3(-r_in.direction()).unwrap();
 
-        let disney_pdf = Box::new(DisneyPDF::new(self, &rec.normal, &v_out, true));
+        let disney_pdf = Box::new(DisneyPDF::new(self, &rec.normal, &v_out, false));
 
         Some(ScatterRecord {
-            attenuation: Color::WHITE, // This value is not used, the real attenuation is calculated in the PDF value
+            attenuation: Color::new(10000.0, 10000.0, 10000.0), // This value is not used, the real attenuation is calculated in the PDF value
             scatter_type: ScatterType::PDF(disney_pdf),
         })
     }
@@ -55,7 +55,7 @@ impl Material for Disney {
         scattered: &crate::utils::ray::Ray,
     ) -> f64 {
         let v_out = UnitVec3::from_vec3(-r_in.direction()).unwrap();
-        let disney_pdf = DisneyPDF::new(self, &rec.normal, &v_out, true);
+        let disney_pdf = DisneyPDF::new(self, &rec.normal, &v_out, false);
 
         let (_, pdf) = disney_pdf.value(scattered.direction());
         pdf
@@ -615,8 +615,7 @@ impl<'a> PDF for DisneyPDF<'a> {
 fn sample_ggx_vndf_anisotropic(v_out: &UnitVec3, ax: f64, ay: f64, u1: f64, u2: f64) -> UnitVec3 {
     let v = UnitVec3::new(v_out.x() * ax, v_out.y(), v_out.z() * ay).unwrap();
 
-    // t1 是单位矢量
-    let t1 = if v.y() < 0.9999 {
+    let t1 = if v.y() < 0.9999999 { // 此处的突变会导致分层，把右侧设的非常接近 1 就看不到分层了
         UnitVec3::from_vec3_raw(v.cross(&UnitVec3::Y_AXIS))
     } else {
         UnitVec3::X_AXIS

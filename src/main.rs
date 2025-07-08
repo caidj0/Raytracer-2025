@@ -33,7 +33,7 @@ fn main() {
         4 => background_scene(),
         _ => disney_scene(),
     };
-    let path_string = format!("output/{}/{}.png", "book4", "image7");
+    let path_string = format!("output/{}/{}.png", "book4", "image8");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -48,12 +48,12 @@ fn disney_scene() -> RgbImage {
     let mut world = Hittables::default();
 
     let disney = Arc::new(Disney {
-        base_color: Color::new(0.955008, 0.637427, 0.538163),
+        base_color: Color::WHITE,
         roughness: 0.3,
         anisotropic: 0.0,
         sheen: 0.0,
         sheen_tint: 0.0,
-        clearcoat: 0.0,
+        clearcoat: 1.0,
         clearcoat_gloss: 0.0,
         relative_ior: 1.5,
         specular_tint: 0.0,
@@ -68,7 +68,7 @@ fn disney_scene() -> RgbImage {
     let metal = Arc::new(Metal::new(Color::WHITE, 0.5));
     let die = Arc::new(Dielectric::new(1.5));
 
-    world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 0.0), 1.0, lab)));
+    world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, 0.0), 1.0, disney)));
     // let light = Sphere::new(
     //     Vec3::new(0.0, 1.5, 0.0),
     //     0.2,
