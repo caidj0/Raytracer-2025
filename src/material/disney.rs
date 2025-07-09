@@ -23,7 +23,6 @@ pub struct Disney {
     pub sheen_tint: f64,
     pub clearcoat: f64,
     pub clearcoat_gloss: f64,
-    pub relative_ior: f64,
     pub specular_tint: f64,
     pub metallic: f64,
     pub ior: f64,
@@ -42,7 +41,7 @@ impl Material for Disney {
     ) -> Option<super::ScatterRecord> {
         let v_out = UnitVec3::from_vec3(-r_in.direction()).unwrap();
 
-        let disney_pdf = Box::new(DisneyPDF::new(self, &rec.normal, &v_out, self.thin));
+        let disney_pdf = Box::new(DisneyPDF::new(self, &rec.normal, &v_out, self.thin, rec.front_face));
 
         Some(ScatterRecord {
             attenuation: Color::new(10000.0, 10000.0, 10000.0), // This value is not used, the real attenuation is calculated in the PDF value
@@ -57,7 +56,7 @@ impl Material for Disney {
         scattered: &crate::utils::ray::Ray,
     ) -> f64 {
         let v_out = UnitVec3::from_vec3(-r_in.direction()).unwrap();
-        let disney_pdf = DisneyPDF::new(self, &rec.normal, &v_out, self.thin);
+        let disney_pdf = DisneyPDF::new(self, &rec.normal, &v_out, self.thin, rec.front_face);
 
         let (_, pdf) = disney_pdf.value(scattered.direction());
         pdf
@@ -70,6 +69,7 @@ impl Disney {
         v_out: &UnitVec3,
         v_half: &UnitVec3,
         v_in: &UnitVec3,
+        relative_ior: f64,
     ) -> (Color, f64, f64) {
         let dot_nl = v_in.cos_theta();
         let dot_nv = v_out.cos_theta();
@@ -83,7 +83,7 @@ impl Disney {
         let gl = anisotropic_separable_smith_ggxg1(v_in, v_half, ax, ay);
         let gv = anisotropic_separable_smith_ggxg1(v_out, v_half, ax, ay);
 
-        let f = self.disney_fresnel(v_out, v_half, v_in);
+        let f = self.disney_fresnel(v_out, v_half, v_in, relative_ior);
 
         let (forward_pdf, reverse_pdf) = ggx_vndf_anisotropic_pdf(v_in, v_half, v_out, ax, ay);
 
@@ -130,12 +130,12 @@ impl Disney {
         (value, forward_pdf, reverse_pdf)
     }
 
-    fn disney_fresnel(&self, v_out: &UnitVec3, v_half: &UnitVec3, v_in: &UnitVec3) -> Color {
+    fn disney_fresnel(&self, v_out: &UnitVec3, v_half: &UnitVec3, v_in: &UnitVec3, relative_ior: f64) -> Color {
         let dot_hv = v_half.dot(v_out);
 
         let tint = calculate_tint(self.base_color);
 
-        let r0 = schlick_r0_from_relative_ior(self.relative_ior)
+        let r0 = schlick_r0_from_relative_ior(relative_ior)
             * lerp(Vec3::new(1.0, 1.0, 1.0), tint, self.specular_tint);
         let r0 = lerp(r0, self.base_color, self.metallic);
 
@@ -157,8 +157,8 @@ impl Disney {
         ax: f64,
         ay: f64,
         thin: bool,
+        relative_ior: f64
     ) -> Color {
-        let relative_ior = self.relative_ior;
         let n2 = relative_ior * relative_ior;
 
         let abs_dot_nl = v_in.cos_theta().abs();
@@ -244,7 +244,10 @@ impl Disney {
         v_out: &UnitVec3,
         v_in: &UnitVec3,
         thin: bool,
+        front_face: bool
     ) -> (Color, f64, f64) {
+        let relative_ior = if front_face {self.ior} else {1.0 / self.ior};
+
         let dot_nv = v_out.cos_theta();
         let dot_nl = v_in.cos_theta();
 
@@ -305,7 +308,7 @@ impl Disney {
             let t_v_out = if is_transmission { -v_out } else { *v_out };
 
             let transmission =
-                self.evaluate_disney_spec_transmission(&t_v_out, &v_half, v_in, tax, tay, thin);
+                self.evaluate_disney_spec_transmission(&t_v_out, &v_half, v_in, tax, tay, thin, relative_ior);
             reflectance += trans_weight * transmission;
 
             let (forward_transmissive_pdf_w, reverse_transmissive_pdf_w) =
@@ -314,15 +317,16 @@ impl Disney {
             let dot_lh = v_half.dot(v_in);
             let dot_vh = v_half.dot(&t_v_out);
 
-            forward_pdf += p_spec_trans * forward_transmissive_pdf_w
-                / (dot_lh + self.relative_ior * dot_vh).powi(2);
-            reverse_pdf += p_spec_trans * reverse_transmissive_pdf_w
-                / (dot_vh + self.relative_ior * dot_lh).powi(2);
+            let jacobian =
+                (relative_ior * relative_ior * dot_lh) / (dot_lh + relative_ior * dot_vh).powi(2);
+
+            forward_pdf += p_spec_trans * forward_transmissive_pdf_w * jacobian.abs();
+            reverse_pdf += p_spec_trans * reverse_transmissive_pdf_w * jacobian.abs();
         }
 
         if upper_hemisphere {
             let (specular, forward_metallic_pdf_w, reverse_metallic_pdf_w) =
-                self.evaluate_brdf(v_out, &v_half, v_in);
+                self.evaluate_brdf(v_out, &v_half, v_in, relative_ior);
 
             reflectance += specular;
             forward_pdf += p_brdf * forward_metallic_pdf_w;
@@ -457,10 +461,11 @@ pub struct DisneyPDF<'a> {
     uvw: OrthonormalBasis,
     v_out: UnitVec3,
     thin: bool,
+    front_face: bool,
 }
 
 impl<'a> DisneyPDF<'a> {
-    pub fn new(material: &'a Disney, normal: &UnitVec3, v_out: &UnitVec3, thin: bool) -> Self {
+    pub fn new(material: &'a Disney, normal: &UnitVec3, v_out: &UnitVec3, thin: bool, front_face: bool) -> Self {
         let uvw = OrthonormalBasis::new(normal);
         let v_out = UnitVec3::from_vec3_raw(uvw.world_to_onb(v_out.into_inner()));
 
@@ -469,6 +474,7 @@ impl<'a> DisneyPDF<'a> {
             uvw,
             v_out,
             thin,
+            front_face,
         }
     }
 
@@ -539,6 +545,7 @@ impl<'a> DisneyPDF<'a> {
     }
 
     fn disney_spec_transmission(&self) -> Option<UnitVec3> {
+        let ior = if self.front_face {self.material.ior} else {1.0 / self.material.ior};
         let v_out = &self.v_out;
 
         if v_out.cos_theta() == 0.0 {
@@ -546,7 +553,7 @@ impl<'a> DisneyPDF<'a> {
         }
 
         let rscaled = if self.thin {
-            thin_transmission_roughness(self.material.ior, self.material.roughness)
+            thin_transmission_roughness(ior, self.material.roughness)
         } else {
             self.material.roughness
         };
@@ -565,10 +572,10 @@ impl<'a> DisneyPDF<'a> {
         let ni = if v_out.y() > 0.0 {
             1.0
         } else {
-            self.material.ior
+            ior
         };
         let nt = if v_out.y() > 0.0 {
-            self.material.ior
+            ior
         } else {
             1.0
         };
@@ -601,7 +608,7 @@ impl<'a> PDF for DisneyPDF<'a> {
             self.uvw
                 .world_to_onb(UnitVec3::from_vec3(*direction).unwrap().into_inner()),
         );
-        let (attentuation, f_pdf, _) = self.material.evaluate_disney(&self.v_out, &v_in, self.thin);
+        let (attentuation, f_pdf, _) = self.material.evaluate_disney(&self.v_out, &v_in, self.thin, self.front_face);
         (attentuation, f_pdf)
     }
 

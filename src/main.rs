@@ -55,7 +55,6 @@ fn disney_scene() -> RgbImage {
         sheen_tint: 0.0,
         clearcoat: 0.0,
         clearcoat_gloss: 0.0,
-        relative_ior: 1.5,
         specular_tint: 0.0,
         metallic: 0.0,
         ior: 1.5,
@@ -90,7 +89,7 @@ fn disney_scene() -> RgbImage {
 
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 1920;
-    camera.samples_per_pixel = 50;
+    camera.samples_per_pixel = 500;
     camera.max_depth = 10;
 
     camera.vertical_fov_in_degrees = 40.0;
@@ -102,7 +101,7 @@ fn disney_scene() -> RgbImage {
     camera.toon_map = ToonMap::ACES;
 
     let mut back_tex = ImageTexture::new("rogland_clear_night_4k.exr");
-    // let solid_back = SolidColor::new(Color::new(0.1, 0.1, 0.1));
+    let solid_back = SolidColor::new(Color::new(0.1, 0.1, 0.1));
     back_tex.raw = true;
     camera.background.texture = Arc::new(back_tex);
 
