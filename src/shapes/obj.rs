@@ -8,7 +8,7 @@ use crate::{
     bvh::BVH,
     hit::{HitRecord, Hittable},
     hits::Hittables,
-    material::{EmptyMaterial, Lambertian, Material, Mix, Transparent},
+    material::{DiffuseLight, EmptyMaterial, Lambertian, Material, Mix, Transparent},
     shapes::triangle::Triangle,
     texture::{ImageTexture, SolidColor, Texture},
     utils::vec3::{Point3, UnitVec3, Vec3},
@@ -19,8 +19,8 @@ struct RemappedMaterial {
     pub tex_ori: Point3,
     pub tex_u: Vec3,
     pub tex_v: Vec3,
-    pub u_vec: UnitVec3,
-    pub v_vec: UnitVec3,
+    pub u_vec: Option<UnitVec3>,
+    pub v_vec: Option<UnitVec3>,
     pub normal: [Vec3; 3],
     pub normal_tex: Option<Arc<ImageTexture>>,
 }
@@ -28,14 +28,19 @@ struct RemappedMaterial {
 impl RemappedMaterial {
     fn remap_record<'a>(&self, rec: &'a HitRecord) -> HitRecord<'a> {
         let tex_coord = self.tex_ori + rec.u * self.tex_u + rec.v * self.tex_v;
-        let normal = UnitVec3::from_vec3((1.0 - rec.u - rec.v) * self.normal[0] + rec.u * self.normal[1] + rec.v * self.normal[2]).unwrap();
+        let normal = UnitVec3::from_vec3(
+            (1.0 - rec.u - rec.v) * self.normal[0]
+                + rec.u * self.normal[1]
+                + rec.v * self.normal[2],
+        )
+        .unwrap();
 
         let normal = if let Some(normal_tex) = &self.normal_tex {
             let normal_color = normal_tex.value(tex_coord.x(), tex_coord.y(), &rec.p);
             let normal_color = normal_color * 2.0 - Vec3::new(1.0, 1.0, 1.0);
 
-            let normal_raw = self.u_vec.as_inner() * normal_color[0]
-                + self.v_vec.as_inner() * normal_color[1]
+            let normal_raw = self.u_vec.unwrap().as_inner() * normal_color[0]
+                + self.v_vec.unwrap().as_inner() * normal_color[1]
                 + normal.as_inner() * normal_color[2];
             UnitVec3::from_vec3(normal_raw).expect("The mapped normal can't normalized!")
         } else {
@@ -116,13 +121,14 @@ impl Wavefont {
         Vec3::from([v[index], v[index + 1], 0.0])
     }
 
-    pub fn new(file_name: &str) -> Option<Wavefont> {
-        let (objects, materials) = Self::load(file_name).ok()?;
+    pub fn new(file_name: &str, prefix: &str) -> Option<Wavefont> {
+        let file_path = prefix.to_owned() + "/" + file_name;
+        let (objects, materials) = Self::load(&file_path).ok()?;
 
         let mut mats: Vec<Arc<dyn Material>> = vec![];
         let mut normals: Vec<Option<Arc<ImageTexture>>> = vec![];
         if let Ok(materials) = materials {
-            load_materials(&mut mats, &mut normals, materials);
+            load_materials(&mut mats, &mut normals, materials, prefix);
         }
 
         let mut obs = Hittables::default();
@@ -197,16 +203,14 @@ fn uv_local_to_world(
     tex_v: Vec3,
     world_u: Vec3,
     world_v: Vec3,
-) -> (UnitVec3, UnitVec3) {
+) -> (Option<UnitVec3>, Option<UnitVec3>) {
     let ua = tex_v.y() / (-tex_u.y() * tex_v.x() + tex_u.x() * tex_v.y());
     let ub = tex_u.y() / (tex_u.y() * tex_v.x() - tex_u.x() * tex_v.y());
     let va = tex_v.x() / (tex_u.y() * tex_v.x() - tex_u.x() * tex_v.y());
     let vb = tex_u.x() / (-tex_u.y() * tex_v.x() + tex_u.x() * tex_v.y());
 
-    let u_vec =
-        UnitVec3::from_vec3(world_u * ua + world_v * ub).expect("The u vec can't be normalized!");
-    let v_vec =
-        UnitVec3::from_vec3(world_u * va + world_v * vb).expect("The v vec can't be normalized!");
+    let u_vec = UnitVec3::from_vec3(world_u * ua + world_v * ub);
+    let v_vec = UnitVec3::from_vec3(world_u * va + world_v * vb);
     (u_vec, v_vec)
 }
 
@@ -214,12 +218,14 @@ fn load_materials(
     mats: &mut Vec<Arc<dyn Material>>,
     normals: &mut Vec<Option<Arc<ImageTexture>>>,
     materials: Vec<tobj::Material>,
+    prefix: &str,
 ) {
     let transparent_mat = Arc::new(Transparent);
 
     for material in materials {
         let tex: Arc<dyn Texture> = if let Some(tex_name) = material.diffuse_texture {
-            Arc::new(ImageTexture::new(&tex_name))
+            let file_path = prefix.to_owned() + "/" + &tex_name;
+            Arc::new(ImageTexture::new(&file_path))
         } else if let Some(color) = material.diffuse {
             Arc::new(SolidColor::from(color))
         } else {
@@ -228,11 +234,23 @@ fn load_materials(
 
         let mut mat: Arc<dyn Material> = Arc::new(Lambertian::new(tex));
 
+        if let Some(emit) = material.unknown_param.get("Ke") {
+            let emit_vals: Vec<f64> = emit
+                .split_whitespace()
+                .filter_map(|s| s.parse::<f64>().ok())
+                .collect();
+            if emit_vals.len() == 3 {
+                let color = SolidColor::from([emit_vals[0], emit_vals[1], emit_vals[2]]);
+                mat = Arc::new(DiffuseLight::new_with_material(Arc::new(color), mat));
+            }
+        }
+
         if let Some(dissolve_tex) = material.dissolve_texture {
-            mat = Arc::new(Mix::from_tex(
+            let file_path = prefix.to_owned() + "/" + &dissolve_tex;
+            mat = Arc::new(Mix::from_image(
                 transparent_mat.clone(),
                 mat,
-                Arc::new(ImageTexture::new(&dissolve_tex)),
+                Arc::new(ImageTexture::new(&file_path)),
             ));
         }
         if let Some(dissolve) = material.dissolve {
@@ -244,7 +262,8 @@ fn load_materials(
         mats.push(mat);
 
         if let Some(tex_name) = material.normal_texture {
-            normals.push(Some(Arc::new(ImageTexture::new(&tex_name))));
+            let file_path = prefix.to_owned() + "/" + &tex_name;
+            normals.push(Some(Arc::new(ImageTexture::new(&file_path))));
         } else {
             normals.push(None);
         }
@@ -262,5 +281,13 @@ impl Hittable for Wavefont {
 
     fn bounding_box(&self) -> &crate::aabb::AABB {
         self.objects.bounding_box()
+    }
+
+    fn pdf_value(&self, origin: &Point3, direction: &Vec3) -> f64 {
+        self.objects.pdf_value(origin, direction)
+    }
+
+    fn random(&self, origin: &Point3) -> UnitVec3 {
+        self.objects.random(origin)
     }
 }

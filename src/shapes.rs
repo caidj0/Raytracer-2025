@@ -113,4 +113,18 @@ impl Hittable for Transform {
     fn bounding_box(&self) -> &AABB {
         &self.bbox
     }
+    
+    fn pdf_value(&self, origin: &Point3, direction: &Vec3) -> f64 {
+        let local_origin = self.detransform(*origin);
+        let local_direction = self.quaternion.conjugate().rotate_vector(*direction);
+
+        self.object.pdf_value(&local_origin, &local_direction)
+    }
+
+    fn random(&self, origin: &Point3) -> UnitVec3 {
+        let local_origin = self.detransform(*origin);
+        let local_dir = self.object.random(&local_origin);
+        let world_dir = self.quaternion.rotate_vector(local_dir.into_inner());
+        UnitVec3::from_vec3(world_dir).expect("Random direction can't be normalized!")
+    }
 }

@@ -4,9 +4,11 @@ use crate::{
     utils::{color::Color, quaternion::Quaternion, ray::Ray, vec3::Vec3},
 };
 
+type RayPortalFn = Box<dyn Fn(&Ray, &HitRecord) -> Ray + Send + Sync>;
+
 pub struct Portal {
     pub attenuation: Color,
-    pub f: Box<dyn Fn(&Ray, &HitRecord) -> Ray + Send + Sync>,
+    pub f: RayPortalFn,
 }
 
 impl Portal {

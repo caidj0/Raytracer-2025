@@ -6,7 +6,7 @@ use std::{f64::consts::PI, sync::Arc};
 use crate::{
     hit::HitRecord,
     pdf::{CosinePDF, PDF, SpherePDF},
-    texture::Texture,
+    texture::{ImageTexture, Texture},
     utils::{
         color::Color,
         random::Random,
@@ -174,20 +174,53 @@ impl Material for Dielectric {
 
 pub struct DiffuseLight {
     texture: Arc<dyn Texture>,
+    material: Option<Arc<dyn Material>>,
 }
 
 impl DiffuseLight {
     pub fn new(texture: Arc<dyn Texture>) -> DiffuseLight {
-        DiffuseLight { texture }
+        DiffuseLight {
+            texture,
+            material: None,
+        }
+    }
+
+    pub fn new_with_material(
+        texture: Arc<dyn Texture>,
+        material: Arc<dyn Material>,
+    ) -> DiffuseLight {
+        DiffuseLight {
+            texture,
+            material: Some(material),
+        }
     }
 }
 
 impl Material for DiffuseLight {
-    fn emitted(&self, _ray: &Ray, rec: &HitRecord) -> Color {
-        if rec.front_face {
+    fn emitted(&self, ray: &Ray, rec: &HitRecord) -> Color {
+        let self_emit = if rec.front_face {
             self.texture.value(rec.u, rec.v, &rec.p)
         } else {
             Color::BLACK
+        };
+        let mat_emit = match &self.material {
+            Some(material) => material.emitted(ray, rec),
+            None => Color::BLACK,
+        };
+        self_emit + mat_emit
+    }
+
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
+        match &self.material {
+            Some(material) => material.scatter(r_in, rec),
+            None => None,
+        }
+    }
+
+    fn scattering_pdf(&self, r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
+        match &self.material {
+            Some(material) => material.scattering_pdf(r_in, rec, scattered),
+            None => 0.0,
         }
     }
 }
@@ -235,15 +268,12 @@ impl Material for Transparent {
     }
 }
 
-enum MixRatioType {
-    Num(f64),
-    Tex(Arc<dyn Texture>),
-}
+type RatioFn = Box<dyn Fn(f64, f64, &Point3) -> f64 + Send + Sync>;
 
 pub struct Mix {
     mat1: Arc<dyn Material>,
     mat2: Arc<dyn Material>,
-    ratio: MixRatioType,
+    ratio: RatioFn,
 }
 
 impl Mix {
@@ -251,27 +281,24 @@ impl Mix {
         Mix {
             mat1,
             mat2,
-            ratio: MixRatioType::Num(ratio),
+            ratio: Box::new(move |_, _, _| ratio),
         }
     }
 
-    pub fn from_tex(
+    pub fn from_image(
         mat1: Arc<dyn Material>,
         mat2: Arc<dyn Material>,
-        tex: Arc<dyn Texture>,
+        tex: Arc<ImageTexture>,
     ) -> Mix {
         Mix {
             mat1,
             mat2,
-            ratio: MixRatioType::Tex(tex),
+            ratio: Box::new(move |u, v, p| tex.alpha(u, v, p)),
         }
     }
 
     fn get_ratio(&self, u: f64, v: f64, p: &Point3) -> f64 {
-        match &self.ratio {
-            MixRatioType::Num(r) => *r,
-            MixRatioType::Tex(tex) => tex.value(u, v, p).e().iter().sum::<f64>() / 3.0,
-        }
+        (self.ratio)(u, v, p)
     }
 }
 

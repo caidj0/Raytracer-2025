@@ -85,6 +85,21 @@ impl ImageTexture {
             raw: false,
         }
     }
+
+    pub fn alpha(&self, u: f64, v: f64, _p: &Point3) -> f64 {
+        if self.image.height() == 0 {
+            return 1.0;
+        }
+
+        let u = u.clamp(0.0, 1.0);
+        let v = 1.0 - v.clamp(0.0, 1.0);
+
+        let i = (u * self.image.width() as f64) as u32;
+        let j = (v * self.image.height() as f64) as u32;
+
+        let pixel = self.image.pixel_data(i, j);
+        pixel[3] as f64
+    }
 }
 
 impl Texture for ImageTexture {

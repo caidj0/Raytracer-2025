@@ -28,7 +28,7 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 6 {
+    let img = match 3 {
         0 => cornell_box(),
         1 => final_scene(400, 250, 4),
         2 => final_scene(800, 5000, 40),
@@ -37,7 +37,7 @@ fn main() {
         5 => disney_scene(),
         _ => portal_scene(),
     };
-    let path_string = format!("output/{}/{}.png", "book4", "image11");
+    let path_string = format!("output/{}/{}.png", "final", "image2");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -96,17 +96,53 @@ fn disney_scene() -> RgbImage {
 
     let disney = Arc::new(Disney {
         base_color: Color::WHITE,
-        roughness: 0.5,
+        roughness: 0.0,
         anisotropic: 0.0,
         sheen: 0.0,
-        sheen_tint: 1.0,
+        sheen_tint: 0.0,
         clearcoat: 0.0,
-        clearcoat_gloss: 1.0,
-        specular_tint: 1.0,
-        metallic: 1.0,
+        clearcoat_gloss: 0.0,
+        specular_tint: 0.0,
+        metallic: 0.0,
         ior: 1.5,
         flatness: 0.0,
-        spec_trans: 0.0,
+        spec_trans: 0.99,
+        diff_trans: 0.0,
+
+        thin: false,
+    });
+
+    let disney2 = Arc::new(Disney {
+        base_color: Color::WHITE,
+        roughness: 0.0,
+        anisotropic: 0.0,
+        sheen: 0.0,
+        sheen_tint: 0.0,
+        clearcoat: 0.0,
+        clearcoat_gloss: 0.0,
+        specular_tint: 0.0,
+        metallic: 0.0,
+        ior: 1.5,
+        flatness: 0.0,
+        spec_trans: 0.01,
+        diff_trans: 0.0,
+
+        thin: false,
+    });
+
+    let disney3 = Arc::new(Disney {
+        base_color: Color::WHITE,
+        roughness: 0.0,
+        anisotropic: 0.0,
+        sheen: 0.0,
+        sheen_tint: 0.0,
+        clearcoat: 0.0,
+        clearcoat_gloss: 0.0,
+        specular_tint: 0.0,
+        metallic: 0.0,
+        ior: 1.5,
+        flatness: 0.0,
+        spec_trans: 0.00,
         diff_trans: 0.0,
 
         thin: false,
@@ -118,11 +154,21 @@ fn disney_scene() -> RgbImage {
 
     // world.add(Box::new(Quad::new(
     //     Vec3::new(-1.0, 0.0, -1.0),
-    //     Vec3::new(2.0, 0.0, 0.0),
     //     Vec3::new(0.0, 0.0, 2.0),
+    //     Vec3::new(2.0, 0.0, 0.0),
     //     disney,
     // )));
     world.add(Box::new(Sphere::new(Vec3::ZERO, 1.0, disney)));
+    world.add(Box::new(Sphere::new(
+        Vec3::new(0.0, 0.0, 2.5),
+        1.0,
+        disney2,
+    )));
+    world.add(Box::new(Sphere::new(
+        Vec3::new(0.0, 0.0, -2.5),
+        1.0,
+        disney3,
+    )));
     // let light = Sphere::new(
     //     Vec3::new(0.0, -0.3, 0.0),
     //     0.2,
@@ -148,7 +194,6 @@ fn disney_scene() -> RgbImage {
     camera.toon_map = ToonMap::ACES;
 
     let mut back_tex = ImageTexture::new("rogland_clear_night_4k.exr");
-    let solid_back = SolidColor::new(Color::new(0.1, 0.1, 0.1));
     back_tex.raw = true;
     camera.background.texture = Arc::new(back_tex);
 
@@ -209,25 +254,38 @@ fn background_scene() -> RgbImage {
 }
 
 fn obj_scene() -> RgbImage {
-    let obj = Wavefont::new("平滑着色测试2.obj").unwrap();
-    let light_tex = Arc::new(SolidColor::new(Color::new(3.0, 3.0, 3.0)));
-    let light_material = Arc::new(DiffuseLight::new(light_tex));
+    let miku = Wavefont::new("初音未来.obj", "初音未来2").unwrap();
+    let light_material = Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(Color::new(
+        10.0, 10.0, 10.0,
+    )))));
     let light = Quad::new(
         Vec3::new(-1.0, 0.0, -1.0),
         Vec3::new(2.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, 2.0),
         light_material,
     );
-    let transfromed_light = Transform::new(
+    let light1 = Transform::new(
+        Box::new(light.clone()),
+        Some(Vec3::new(-1.7, 1.0, 0.30)),
+        Some(Quaternion::from_axis_angle(
+            Vec3::new(-0.05, -0.168, 0.985),
+            101.0,
+        )),
+        None,
+    );
+    let light2 = Transform::new(
         Box::new(light),
-        Some(Vec3::new(0.0, 2.0, 0.0)),
-        Some(Quaternion::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), 20.0)),
-        Some(Vec3::new(3.0, 3.0, 3.0)),
+        Some(Vec3::new(-1.7, 1.0, 0.30)),
+        Some(Quaternion::from_axis_angle(
+            Vec3::new(-0.05, -0.168, 0.985),
+            101.0,
+        )),
+        None,
     );
 
     let mut world = Hittables::default();
-    world.add(Box::new(obj));
-    world.add(Box::new(transfromed_light));
+    world.add(Box::new(miku));
+    world.add(Box::new(light1));
 
     let mut camera = Camera::default();
 
@@ -237,15 +295,17 @@ fn obj_scene() -> RgbImage {
     camera.max_depth = 10;
 
     camera.vertical_fov_in_degrees = 40.0;
-    camera.look_from = Point3::new(-2.0, 0.9, -2.0);
-    camera.look_at = Point3::new(0.0, 0.0, 0.0);
+    camera.look_from = Point3::new(1.0, 3.0, 3.0) * 0.5;
+    camera.look_at = Point3::new(0.0, 1.0, 0.0);
     camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
 
     camera.defocus_angle_in_degrees = 0.0;
 
-    camera.background.texture = Arc::new(SolidColor::new(Color::new(0.1, 0.1, 0.1)));
+    let mut backtex = ImageTexture::new("09.hdr");
+    backtex.raw = true;
+    camera.background.texture = Arc::new(backtex);
 
-    let img = camera.render(&world, None);
+    let img = camera.render(&world, Some(&light2));
 
     drop(world);
 
