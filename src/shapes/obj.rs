@@ -21,22 +21,25 @@ struct RemappedMaterial {
     pub tex_v: Vec3,
     pub u_vec: UnitVec3,
     pub v_vec: UnitVec3,
-    pub normal: Option<Arc<ImageTexture>>,
+    pub normal: [Vec3; 3],
+    pub normal_tex: Option<Arc<ImageTexture>>,
 }
 
 impl RemappedMaterial {
     fn remap_record<'a>(&self, rec: &'a HitRecord) -> HitRecord<'a> {
         let tex_coord = self.tex_ori + rec.u * self.tex_u + rec.v * self.tex_v;
-        let normal = if let Some(normal_tex) = &self.normal {
+        let normal = UnitVec3::from_vec3((1.0 - rec.u - rec.v) * self.normal[0] + rec.u * self.normal[1] + rec.v * self.normal[2]).unwrap();
+
+        let normal = if let Some(normal_tex) = &self.normal_tex {
             let normal_color = normal_tex.value(tex_coord.x(), tex_coord.y(), &rec.p);
             let normal_color = normal_color * 2.0 - Vec3::new(1.0, 1.0, 1.0);
 
             let normal_raw = self.u_vec.as_inner() * normal_color[0]
                 + self.v_vec.as_inner() * normal_color[1]
-                + rec.normal.as_inner() * normal_color[2];
+                + normal.as_inner() * normal_color[2];
             UnitVec3::from_vec3(normal_raw).expect("The mapped normal can't normalized!")
         } else {
-            rec.normal
+            normal
         };
 
         HitRecord {
@@ -137,7 +140,7 @@ fn load_object(
     mats: &[Arc<dyn Material>],
     obs: &mut Hittables,
     object: &tobj::Model,
-    normal: &Option<Arc<ImageTexture>>,
+    normal_texture: &Option<Arc<ImageTexture>>,
 ) {
     let empty_material = Arc::new(EmptyMaterial);
 
@@ -150,6 +153,10 @@ fn load_object(
         let tex_p1 = Wavefont::get_two_values(&object.mesh.texcoords, indices[0] as usize);
         let tex_p2 = Wavefont::get_two_values(&object.mesh.texcoords, indices[1] as usize);
         let tex_p3 = Wavefont::get_two_values(&object.mesh.texcoords, indices[2] as usize);
+
+        let n_p1 = Wavefont::get_three_values(&object.mesh.normals, indices[0] as usize);
+        let n_p2 = Wavefont::get_three_values(&object.mesh.normals, indices[1] as usize);
+        let n_p3 = Wavefont::get_three_values(&object.mesh.normals, indices[2] as usize);
 
         let mat = if let Some(id) = object.mesh.material_id {
             mats[id].clone()
@@ -172,7 +179,8 @@ fn load_object(
             tex_v,
             u_vec,
             v_vec,
-            normal: normal.clone(),
+            normal: [n_p1, n_p2, n_p3],
+            normal_tex: normal_texture.clone(),
         });
 
         v.push(Box::new(Triangle::new(p1, world_u, world_v, mat)));

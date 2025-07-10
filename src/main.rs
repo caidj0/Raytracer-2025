@@ -25,7 +25,7 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 5 {
+    let img = match 3 {
         0 => cornell_box(),
         1 => final_scene(400, 250, 4),
         2 => final_scene(800, 5000, 40),
@@ -49,17 +49,17 @@ fn disney_scene() -> RgbImage {
 
     let disney = Arc::new(Disney {
         base_color: Color::WHITE,
-        roughness: 0.0,
+        roughness: 0.5,
         anisotropic: 0.0,
         sheen: 0.0,
-        sheen_tint: 0.0,
+        sheen_tint: 1.0,
         clearcoat: 0.0,
-        clearcoat_gloss: 0.0,
-        specular_tint: 0.0,
-        metallic: 0.0,
+        clearcoat_gloss: 1.0,
+        specular_tint: 1.0,
+        metallic: 1.0,
         ior: 1.5,
         flatness: 0.0,
-        spec_trans: 1.0,
+        spec_trans: 0.0,
         diff_trans: 0.0,
 
         thin: false,
@@ -162,7 +162,7 @@ fn background_scene() -> RgbImage {
 }
 
 fn obj_scene() -> RgbImage {
-    let obj = Wavefont::new("uv_test_sphere.obj").unwrap();
+    let obj = Wavefont::new("平滑着色测试2.obj").unwrap();
     let light_tex = Arc::new(SolidColor::new(Color::new(3.0, 3.0, 3.0)));
     let light_material = Arc::new(DiffuseLight::new(light_tex));
     let light = Quad::new(
@@ -186,7 +186,7 @@ fn obj_scene() -> RgbImage {
 
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 1920;
-    camera.samples_per_pixel = 1000;
+    camera.samples_per_pixel = 100;
     camera.max_depth = 10;
 
     camera.vertical_fov_in_degrees = 40.0;
