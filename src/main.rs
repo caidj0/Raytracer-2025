@@ -6,7 +6,10 @@ use raytracer::{
     bvh::BVH,
     camera::Camera,
     hits::Hittables,
-    material::{Dielectric, DiffuseLight, EmptyMaterial, Lambertian, Metal, Mix, disney::Disney},
+    material::{
+        Dielectric, DiffuseLight, EmptyMaterial, Lambertian, Metal, Mix, disney::Disney,
+        portal::Portal,
+    },
     shapes::{
         Transform,
         obj::Wavefont,
@@ -25,13 +28,14 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 3 {
+    let img = match 6 {
         0 => cornell_box(),
         1 => final_scene(400, 250, 4),
         2 => final_scene(800, 5000, 40),
         3 => obj_scene(),
         4 => background_scene(),
-        _ => disney_scene(),
+        5 => disney_scene(),
+        _ => portal_scene(),
     };
     let path_string = format!("output/{}/{}.png", "book4", "image11");
     let path = std::path::Path::new(&path_string);
@@ -42,6 +46,49 @@ fn main() {
         style(path.to_str().unwrap()).yellow()
     );
     img.save(path).expect("Cannot save the image to the file");
+}
+
+fn portal_scene() -> RgbImage {
+    let mut world = Hittables::default();
+    let portal_material = Arc::new(Portal::new(
+        Color::WHITE,
+        Vec3::new(2.0, 0.0, 0.0),
+        Quaternion::identity(),
+    ));
+
+    let quad = Quad::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        Vec3::new(0.0, 0.0, 2.0),
+        Vec3::new(2.0, 0.0, 0.0),
+        portal_material,
+    );
+
+    let sphere_material = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Color::WHITE))));
+    let sphere = Sphere::new(Vec3::new(2.0, -1.5, 0.0), 1.0, sphere_material);
+
+    world.add(Box::new(quad));
+    world.add(Box::new(sphere));
+
+    let mut camera = Camera::default();
+
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 1920;
+    camera.samples_per_pixel = 500;
+    camera.max_depth = 10;
+
+    camera.vertical_fov_in_degrees = 40.0;
+    camera.look_from = Point3::new(0.0, 2.0, 1.0) * 2.0;
+    camera.look_at = Point3::new(0.0, 0.0, 0.0);
+    camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
+
+    camera.defocus_angle_in_degrees = 0.0;
+    camera.toon_map = ToonMap::ACES;
+
+    let mut back_tex = ImageTexture::new("rogland_clear_night_4k.exr");
+    back_tex.raw = true;
+    camera.background.texture = Arc::new(back_tex);
+
+    camera.render(&world, None)
 }
 
 fn disney_scene() -> RgbImage {
