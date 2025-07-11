@@ -113,7 +113,7 @@ impl Hittable for Transform {
     fn bounding_box(&self) -> &AABB {
         &self.bbox
     }
-    
+
     fn pdf_value(&self, origin: &Point3, direction: &Vec3) -> f64 {
         let local_origin = self.detransform(*origin);
         let local_direction = self.quaternion.conjugate().rotate_vector(*direction);

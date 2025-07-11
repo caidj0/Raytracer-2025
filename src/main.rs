@@ -27,7 +27,7 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 3 {
+    let img = match 5 {
         0 => cornell_box(),
         1 => final_scene(400, 250, 4),
         2 => final_scene(800, 5000, 40),
@@ -93,59 +93,22 @@ fn portal_scene() -> RgbImage {
 fn disney_scene() -> RgbImage {
     let mut world = Hittables::default();
 
-    let disney = Arc::new(Disney {
-        base_color: Color::WHITE,
-        roughness: 0.0,
-        anisotropic: 0.0,
-        sheen: 0.0,
-        sheen_tint: 0.0,
-        clearcoat: 0.0,
-        clearcoat_gloss: 0.0,
-        specular_tint: 0.0,
-        metallic: 0.0,
-        ior: 1.5,
-        flatness: 0.0,
-        spec_trans: 0.99,
-        diff_trans: 0.0,
-
-        thin: false,
-    });
-
-    let disney2 = Arc::new(Disney {
-        base_color: Color::WHITE,
-        roughness: 0.0,
-        anisotropic: 0.0,
-        sheen: 0.0,
-        sheen_tint: 0.0,
-        clearcoat: 0.0,
-        clearcoat_gloss: 0.0,
-        specular_tint: 0.0,
-        metallic: 0.0,
-        ior: 1.5,
-        flatness: 0.0,
-        spec_trans: 0.01,
-        diff_trans: 0.0,
-
-        thin: false,
-    });
-
-    let disney3 = Arc::new(Disney {
-        base_color: Color::WHITE,
-        roughness: 0.0,
-        anisotropic: 0.0,
-        sheen: 0.0,
-        sheen_tint: 0.0,
-        clearcoat: 0.0,
-        clearcoat_gloss: 0.0,
-        specular_tint: 0.0,
-        metallic: 0.0,
-        ior: 1.5,
-        flatness: 0.0,
-        spec_trans: 0.00,
-        diff_trans: 0.0,
-
-        thin: false,
-    });
+    let disney = Arc::new(Disney::new(
+        Color::WHITE,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.5,
+        0.0,
+        0.0,
+        0.0,
+        false,
+    ));
 
     // let lab = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Color::WHITE))));
     // let metal = Arc::new(Metal::new(Color::WHITE, 0.5));
@@ -158,16 +121,6 @@ fn disney_scene() -> RgbImage {
     //     disney,
     // )));
     world.add(Box::new(Sphere::new(Vec3::ZERO, 1.0, disney)));
-    world.add(Box::new(Sphere::new(
-        Vec3::new(0.0, 0.0, 2.5),
-        1.0,
-        disney2,
-    )));
-    world.add(Box::new(Sphere::new(
-        Vec3::new(0.0, 0.0, -2.5),
-        1.0,
-        disney3,
-    )));
     // let light = Sphere::new(
     //     Vec3::new(0.0, -0.3, 0.0),
     //     0.2,
