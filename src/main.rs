@@ -15,7 +15,6 @@ use raytracer::{
         obj::Wavefont,
         quad::{Quad, build_box},
         sphere::Sphere,
-        triangle::Triangle,
     },
     texture::{ImageTexture, NoiseTexture, SolidColor},
     utils::{
@@ -254,7 +253,7 @@ fn background_scene() -> RgbImage {
 }
 
 fn obj_scene() -> RgbImage {
-    let miku = Wavefont::new("初音未来.obj", "初音未来2").unwrap();
+    let miku = Wavefont::new("初音未来.obj", "YYB初音未来").unwrap();
     let light_material = Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(Color::new(
         10.0, 10.0, 10.0,
     )))));
@@ -492,7 +491,7 @@ fn cornell_box() -> RgbImage {
         Vec3::new(0.0, 0.0, 555.0),
         red,
     )));
-    world.add(Box::new(Triangle::new(
+    world.add(Box::new(Quad::new(
         Point3::new(343.0, 554.0, 332.0),
         Vec3::new(-130.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -105.0),
@@ -538,7 +537,7 @@ fn cornell_box() -> RgbImage {
     //     &glass,
     // )));
 
-    lights.add(Box::new(Triangle::new(
+    lights.add(Box::new(Quad::new(
         Point3::new(343.0, 554.0, 332.0),
         Vec3::new(-130.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -105.0),

@@ -116,7 +116,7 @@ impl Hittable for Sphere {
 
         let Some(_) = self.hit(
             &Ray::new(*origin, *direction),
-            &Interval::new(0.001, f64::INFINITY),
+            &Interval::new(1e-8, f64::INFINITY),
         ) else {
             return 0.0;
         };

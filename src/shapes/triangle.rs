@@ -26,13 +26,13 @@ pub struct Triangle {
 }
 
 impl Triangle {
-    pub fn new(anchor: Point3, u: Vec3, v: Vec3, mat: Arc<dyn Material>) -> Triangle {
+    pub fn new(anchor: Point3, u: Vec3, v: Vec3, mat: Arc<dyn Material>) -> Option<Triangle> {
         let n = Vec3::cross(&u, &v);
-        let normal = UnitVec3::from_vec3(n).expect("The length of normal should be normalizable!");
+        let normal = UnitVec3::from_vec3(n)?;
         let parm_d = normal.dot(&anchor);
         let w = n / n.length_squared();
         let area = n.length() / 2.0;
-        Triangle {
+        Some(Triangle {
             anchor,
             u,
             v,
@@ -42,7 +42,7 @@ impl Triangle {
             normal,
             parm_d,
             area,
-        }
+        })
     }
 }
 
@@ -104,7 +104,7 @@ impl Hittable for Triangle {
     fn pdf_value(&self, origin: &Point3, direction: &Vec3) -> f64 {
         let Some(rec) = self.hit(
             &Ray::new(*origin, *direction),
-            &Interval::new(0.001, f64::INFINITY),
+            &Interval::new(1e-8, f64::INFINITY),
         ) else {
             return 0.0;
         };

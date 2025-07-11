@@ -219,7 +219,7 @@ impl Camera {
             return Color::BLACK;
         }
 
-        let Some(rec) = world.hit(r, &Interval::from_range(0.001..f64::INFINITY)) else {
+        let Some(rec) = world.hit(r, &Interval::from_range(1e-8..f64::INFINITY)) else {
             return self.background.value(r);
         };
 

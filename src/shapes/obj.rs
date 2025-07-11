@@ -189,7 +189,9 @@ fn load_object(
             normal_tex: normal_texture.clone(),
         });
 
-        v.push(Box::new(Triangle::new(p1, world_u, world_v, mat)));
+        if let Some(triangle) = Triangle::new(p1, world_u, world_v, mat) {
+            v.push(Box::new(triangle));
+        }
     }
     if !v.is_empty() {
         obs.add(Box::new(BVH::from_vec(v)));
