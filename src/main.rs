@@ -27,7 +27,7 @@ use raytracer::{
 };
 
 fn main() {
-    let img = match 5 {
+    let img = match 3 {
         0 => cornell_box(),
         1 => final_scene(400, 250, 4),
         2 => final_scene(800, 5000, 40),
@@ -253,7 +253,7 @@ fn obj_scene() -> RgbImage {
 
     camera.defocus_angle_in_degrees = 0.0;
 
-    let mut backtex = ImageTexture::new("09.hdr");
+    let mut backtex = ImageTexture::new("04.hdr");
     backtex.raw = true;
     camera.background.texture = Arc::new(backtex);
 

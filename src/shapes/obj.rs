@@ -8,7 +8,10 @@ use crate::{
     bvh::BVH,
     hit::{HitRecord, Hittable},
     hits::Hittables,
-    material::{DiffuseLight, EmptyMaterial, Lambertian, Material, Mix, Transparent},
+    material::{
+        DiffuseLight, EmptyMaterial, Lambertian, Material, Mix, Transparent,
+        disney::{Disney, DisneyParameters},
+    },
     shapes::triangle::Triangle,
     texture::{ImageTexture, SolidColor, Texture},
     utils::vec3::{Point3, UnitVec3, Vec3},
@@ -234,7 +237,52 @@ fn load_materials(
             panic!("The material should at least have one diffuse!")
         };
 
-        let mut mat: Arc<dyn Material> = Arc::new(Lambertian::new(tex));
+        let base_color = tex;
+        let roughness = material
+            .unknown_param
+            .get("Pr")
+            .and_then(|s| s.parse::<f64>().ok())
+            .unwrap_or(0.5);
+        let anisotropic = material
+            .unknown_param
+            .get("aniso")
+            .and_then(|s| s.parse::<f64>().ok())
+            .unwrap_or(0.0);
+        let sheen = material
+            .unknown_param
+            .get("Ps")
+            .and_then(|s| s.parse::<f64>().ok())
+            .unwrap_or(0.0);
+        let metallic = material
+            .unknown_param
+            .get("Pm")
+            .and_then(|s| s.parse::<f64>().ok())
+            .unwrap_or(0.0);
+        let clearcoat = material
+            .unknown_param
+            .get("Pc")
+            .and_then(|s| s.parse::<f64>().ok())
+            .unwrap_or(0.0);
+        let clearcoat_gloss = material
+            .unknown_param
+            .get("Pcr")
+            .and_then(|s| s.parse::<f64>().ok())
+            .unwrap_or(0.0);
+        let ior = material.optical_density.unwrap_or(1.45);
+
+        let mut mat: Arc<dyn Material> = Arc::new(Disney {
+            param_fn: Box::new(move |u, v, p| DisneyParameters {
+                base_color: base_color.value(u, v, p),
+                roughness,
+                anisotropic,
+                sheen,
+                clearcoat,
+                clearcoat_gloss,
+                metallic,
+                ior,
+                ..Default::default()
+            }),
+        });
 
         if let Some(emit) = material.unknown_param.get("Ke") {
             let emit_vals: Vec<f64> = emit
