@@ -198,11 +198,7 @@ impl DiffuseLight {
 
 impl Material for DiffuseLight {
     fn emitted(&self, ray: &Ray, rec: &HitRecord) -> Color {
-        let self_emit = if rec.front_face {
-            self.texture.value(rec.u, rec.v, &rec.p)
-        } else {
-            Color::BLACK
-        };
+        let self_emit = self.texture.value(rec.u, rec.v, &rec.p);
         let mat_emit = match &self.material {
             Some(material) => material.emitted(ray, rec),
             None => Color::BLACK,

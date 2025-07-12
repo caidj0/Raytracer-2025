@@ -269,6 +269,13 @@ fn load_materials(
             .and_then(|s| s.parse::<f64>().ok())
             .unwrap_or(0.0);
         let ior = material.optical_density.unwrap_or(1.45);
+        let spec_trans: f64 = if let Some(tf) = material.unknown_param.get("Tf") {
+            let spec_trans_vals: Vec<f64> = tf
+                .split_whitespace()
+                .filter_map(|s| s.parse::<f64>().ok())
+                .collect();
+            spec_trans_vals.iter().sum::<f64>() / spec_trans_vals.len() as f64
+        } else {0.0};
 
         let mut mat: Arc<dyn Material> = Arc::new(Disney {
             param_fn: Box::new(move |u, v, p| DisneyParameters {
@@ -280,6 +287,7 @@ fn load_materials(
                 clearcoat_gloss,
                 metallic,
                 ior,
+                spec_trans,
                 ..Default::default()
             }),
         });

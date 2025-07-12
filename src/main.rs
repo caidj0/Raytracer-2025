@@ -209,37 +209,9 @@ fn background_scene() -> RgbImage {
 
 fn obj_scene() -> RgbImage {
     let miku = Wavefont::new("初音未来.obj", "YYB初音未来").unwrap();
-    let light_material = Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(Color::new(
-        10.0, 10.0, 10.0,
-    )))));
-    let light = Quad::new(
-        Vec3::new(-1.0, 0.0, -1.0),
-        Vec3::new(2.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, 2.0),
-        light_material,
-    );
-    let light1 = Transform::new(
-        Box::new(light.clone()),
-        Some(Vec3::new(-1.7, 1.0, 0.30)),
-        Some(Quaternion::from_axis_angle(
-            Vec3::new(-0.05, -0.168, 0.985),
-            101.0,
-        )),
-        None,
-    );
-    let light2 = Transform::new(
-        Box::new(light),
-        Some(Vec3::new(-1.7, 1.0, 0.30)),
-        Some(Quaternion::from_axis_angle(
-            Vec3::new(-0.05, -0.168, 0.985),
-            101.0,
-        )),
-        None,
-    );
 
     let mut world = Hittables::default();
     world.add(Box::new(miku));
-    world.add(Box::new(light1));
 
     let mut camera = Camera::from_json("YYB初音未来/camera.json").unwrap();
 
@@ -250,7 +222,21 @@ fn obj_scene() -> RgbImage {
     backtex.raw = true;
     camera.background.texture = Arc::new(backtex);
 
-    let img = camera.render(&world, Some(&light2));
+    let light = Box::new(Transform::new(
+        Box::new(Quad::new(
+            Vec3::new(-1.0, 0.0, -1.0),
+            Vec3::new(0.0, 0.0, 2.0),
+            Vec3::new(2.0, 0.0, 0.0),
+            Arc::new(EmptyMaterial),
+        )),
+        Some(Vec3::new(-0.28, 1.73, 0.50)),
+        Some(Quaternion::from_axis_angle(
+            Vec3::new(0.921, 0.021, -0.389),
+            34.7,
+        )),
+        None,
+    ));
+    let img = camera.render(&world, Some(light.as_ref()));
 
     drop(world);
 
