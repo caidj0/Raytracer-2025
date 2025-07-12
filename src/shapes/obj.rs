@@ -9,7 +9,7 @@ use crate::{
     hit::{HitRecord, Hittable},
     hits::Hittables,
     material::{
-        DiffuseLight, EmptyMaterial, Lambertian, Material, Mix, Transparent,
+        DiffuseLight, EmptyMaterial, Material, Mix, Transparent,
         disney::{Disney, DisneyParameters},
     },
     shapes::triangle::Triangle,

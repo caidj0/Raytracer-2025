@@ -36,7 +36,7 @@ fn main() {
         5 => disney_scene(),
         _ => portal_scene(),
     };
-    let path_string = format!("output/{}/{}.png", "final", "image2");
+    let path_string = format!("output/{}/{}.png", "final", "image3");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -93,22 +93,24 @@ fn portal_scene() -> RgbImage {
 fn disney_scene() -> RgbImage {
     let mut world = Hittables::default();
 
-    let disney = Arc::new(Disney::new(
-        Color::WHITE,
-        1.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        1.5,
-        0.0,
-        0.0,
-        0.0,
-        false,
-    ));
+    let disney = Arc::new(
+        Disney::builder()
+            .base_color(Color::WHITE)
+            .roughness(1.0)
+            .anisotropic(0.0)
+            .sheen(0.0)
+            .sheen_tint(0.0)
+            .clearcoat(0.0)
+            .clearcoat_gloss(0.0)
+            .specular_tint(0.0)
+            .metallic(0.0)
+            .ior(1.5)
+            .flatness(0.0)
+            .spec_trans(0.0)
+            .diff_trans(0.0)
+            .thin(false)
+            .build(),
+    );
 
     // let lab = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Color::WHITE))));
     // let metal = Arc::new(Metal::new(Color::WHITE, 0.5));
@@ -239,19 +241,10 @@ fn obj_scene() -> RgbImage {
     world.add(Box::new(miku));
     world.add(Box::new(light1));
 
-    let mut camera = Camera::default();
+    let mut camera = Camera::from_json("YYB初音未来/camera.json").unwrap();
 
-    camera.aspect_ratio = 16.0 / 9.0;
-    camera.image_width = 1920;
     camera.samples_per_pixel = 100;
     camera.max_depth = 10;
-
-    camera.vertical_fov_in_degrees = 40.0;
-    camera.look_from = Point3::new(1.0, 3.0, 3.0) * 0.5;
-    camera.look_at = Point3::new(0.0, 1.0, 0.0);
-    camera.vec_up = Vec3::new(0.0, 1.0, 0.0);
-
-    camera.defocus_angle_in_degrees = 0.0;
 
     let mut backtex = ImageTexture::new("04.hdr");
     backtex.raw = true;

@@ -5,11 +5,32 @@ use std::{
     ops::{AddAssign, Deref, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Range},
 };
 
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
 use crate::utils::random::Random;
 
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct Vec3 {
     e: [f64; 3],
+}
+
+impl Serialize for Vec3 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.e.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Vec3 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let e = <[f64; 3]>::deserialize(deserializer)?;
+        Ok(Vec3 { e })
+    }
 }
 
 pub type Point3 = Vec3;

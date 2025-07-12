@@ -2,10 +2,17 @@ use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},
 };
+use std::{
+    env::{self, current_dir},
+    fs::File,
+    io::BufReader,
+    path::PathBuf,
+};
 
 use image::{ImageBuffer, RgbImage};
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
+use serde::Deserialize;
 
 use crate::{
     hit::Hittable,
@@ -21,6 +28,19 @@ use crate::{
         vec3::{Point3, UnitVec3, Vec3},
     },
 };
+
+// 用于从 JSON 反序列化相机参数的结构体
+#[derive(Debug, Deserialize)]
+struct CameraParams {
+    aspect_ratio: f64,
+    image_width: u32,
+    vertical_fov_in_degrees: f64,
+    look_from: Vec3,
+    look_at: Vec3,
+    vec_up: Vec3,
+    defocus_angle_in_degrees: f64,
+    focus_distance: f64,
+}
 
 #[derive(Debug)]
 pub struct Camera {
@@ -92,6 +112,50 @@ impl Camera {
             image_width,
             ..Default::default()
         }
+    }
+
+    /// 从 JSON 文件加载相机参数
+    /// 查找路径的处理类似于 Image::new
+    pub fn from_json(json_filename: &str) -> Result<Camera, Box<dyn std::error::Error>> {
+        // 首先尝试从环境变量指定的目录加载
+        if let Ok(specified_dir) = env::var("RTW_IMAGES") {
+            let mut path = PathBuf::new();
+            path.push(specified_dir);
+            path.push(json_filename);
+
+            if let Ok(camera) = Self::load_from_path(&path) {
+                return Ok(camera);
+            }
+        }
+
+        // 如果环境变量路径不存在或加载失败，尝试从 assets 目录加载
+        let Ok(pathbuf) = current_dir() else {
+            return Err("Cannot get current directory".into());
+        };
+
+        let mut path = pathbuf;
+        path.push("assets");
+        path.push(json_filename);
+
+        Self::load_from_path(&path)
+    }
+
+    fn load_from_path(path: &PathBuf) -> Result<Camera, Box<dyn std::error::Error>> {
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let params: CameraParams = serde_json::from_reader(reader)?;
+
+        Ok(Camera {
+            aspect_ratio: params.aspect_ratio,
+            image_width: params.image_width,
+            vertical_fov_in_degrees: params.vertical_fov_in_degrees,
+            look_from: params.look_from,
+            look_at: params.look_at,
+            vec_up: params.vec_up,
+            defocus_angle_in_degrees: params.defocus_angle_in_degrees,
+            focus_distance: params.focus_distance,
+            ..Default::default()
+        })
     }
 
     pub fn render(&mut self, world: &dyn Hittable, lights: Option<&dyn Hittable>) -> RgbImage {

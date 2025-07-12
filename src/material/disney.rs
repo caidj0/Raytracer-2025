@@ -13,6 +13,7 @@ use crate::{
     },
 };
 
+#[derive(Clone)]
 pub struct DisneyParameters {
     pub base_color: Color,
     pub roughness: f64,
@@ -110,40 +111,14 @@ impl Material for Disney {
 }
 
 impl Disney {
-    pub fn new(
-        base_color: Color,
-        roughness: f64,
-        anisotropic: f64,
-        sheen: f64,
-        sheen_tint: f64,
-        clearcoat: f64,
-        clearcoat_gloss: f64,
-        specular_tint: f64,
-        metallic: f64,
-        ior: f64,
-        flatness: f64,
-        spec_trans: f64,
-        diff_trans: f64,
-        thin: bool,
-    ) -> Disney {
-        Disney {
-            param_fn: Box::new(move |_, _, _| DisneyParameters {
-                base_color,
-                roughness,
-                anisotropic,
-                sheen,
-                sheen_tint,
-                clearcoat,
-                clearcoat_gloss,
-                specular_tint,
-                metallic,
-                ior,
-                flatness,
-                spec_trans,
-                diff_trans,
-                thin,
-            }),
-        }
+    /// Creates a new Disney material with all default parameters
+    pub fn new() -> Disney {
+        Disney::default()
+    }
+
+    /// Returns a builder for creating Disney materials with custom parameters
+    pub fn builder() -> DisneyBuilder {
+        DisneyBuilder::new()
     }
 
     fn evaluate_brdf(
@@ -760,4 +735,93 @@ fn sample_ggx_vndf_anisotropic(v_out: &UnitVec3, ax: f64, ay: f64, u1: f64, u2: 
     let n = p1 * t1.as_inner() + p2 * t2 + (1.0 - p1 * p1 - p2 * p2).max(0.0).sqrt() * v.as_inner();
 
     UnitVec3::from_vec3(Vec3::new(ax * n.x(), n.y(), ay * n.z())).unwrap()
+}
+
+/// Builder for creating Disney materials with a fluent interface
+#[derive(Default)]
+pub struct DisneyBuilder {
+    params: DisneyParameters,
+}
+
+impl DisneyBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn base_color(mut self, base_color: Color) -> Self {
+        self.params.base_color = base_color;
+        self
+    }
+
+    pub fn roughness(mut self, roughness: f64) -> Self {
+        self.params.roughness = roughness;
+        self
+    }
+
+    pub fn anisotropic(mut self, anisotropic: f64) -> Self {
+        self.params.anisotropic = anisotropic;
+        self
+    }
+
+    pub fn sheen(mut self, sheen: f64) -> Self {
+        self.params.sheen = sheen;
+        self
+    }
+
+    pub fn sheen_tint(mut self, sheen_tint: f64) -> Self {
+        self.params.sheen_tint = sheen_tint;
+        self
+    }
+
+    pub fn clearcoat(mut self, clearcoat: f64) -> Self {
+        self.params.clearcoat = clearcoat;
+        self
+    }
+
+    pub fn clearcoat_gloss(mut self, clearcoat_gloss: f64) -> Self {
+        self.params.clearcoat_gloss = clearcoat_gloss;
+        self
+    }
+
+    pub fn specular_tint(mut self, specular_tint: f64) -> Self {
+        self.params.specular_tint = specular_tint;
+        self
+    }
+
+    pub fn metallic(mut self, metallic: f64) -> Self {
+        self.params.metallic = metallic;
+        self
+    }
+
+    pub fn ior(mut self, ior: f64) -> Self {
+        self.params.ior = ior;
+        self
+    }
+
+    pub fn flatness(mut self, flatness: f64) -> Self {
+        self.params.flatness = flatness;
+        self
+    }
+
+    pub fn spec_trans(mut self, spec_trans: f64) -> Self {
+        self.params.spec_trans = spec_trans;
+        self
+    }
+
+    pub fn diff_trans(mut self, diff_trans: f64) -> Self {
+        self.params.diff_trans = diff_trans;
+        self
+    }
+
+    pub fn thin(mut self, thin: bool) -> Self {
+        self.params.thin = thin;
+        self
+    }
+
+    pub fn build(self) -> Disney {
+        let params = self.params;
+        Disney {
+            param_fn: Box::new(move |_, _, _| params.clone()),
+        }
+    }
 }
