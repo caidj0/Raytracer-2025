@@ -415,8 +415,8 @@ impl Disney {
         reflectance *= dot_nl.abs();
 
         if forward_pdf == 0.0 {
-            println!("Opps!");
-            panic!();
+            // panic!("The pdf can't be zero!");
+            forward_pdf = f64::INFINITY;
         }
 
         (reflectance, forward_pdf, reverse_pdf)
