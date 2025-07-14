@@ -228,7 +228,7 @@ fn load_materials(
     let transparent_mat = Arc::new(Transparent);
 
     for material in materials {
-        let tex: Arc<dyn Texture> = if let Some(tex_name) = material.diffuse_texture {
+        let base_color: Arc<dyn Texture> = if let Some(tex_name) = material.diffuse_texture {
             let file_path = prefix.to_owned() + "/" + &tex_name;
             Arc::new(ImageTexture::new(&file_path))
         } else if let Some(color) = material.diffuse {
@@ -236,8 +236,6 @@ fn load_materials(
         } else {
             panic!("The material should at least have one diffuse!")
         };
-
-        let base_color = tex;
         let roughness = material
             .unknown_param
             .get("Pr")
@@ -275,7 +273,9 @@ fn load_materials(
                 .filter_map(|s| s.parse::<f64>().ok())
                 .collect();
             spec_trans_vals.iter().sum::<f64>() / spec_trans_vals.len() as f64
-        } else {0.0};
+        } else {
+            0.0
+        };
 
         let mut mat: Arc<dyn Material> = Arc::new(Disney {
             param_fn: Box::new(move |u, v, p| DisneyParameters {
@@ -320,8 +320,18 @@ fn load_materials(
         mats.push(mat);
 
         if let Some(tex_name) = material.normal_texture {
-            let file_path = prefix.to_owned() + "/" + &tex_name;
-            normals.push(Some(Arc::new(ImageTexture::new(&file_path))));
+            // 处理 tex_name 可能为 "文件名" 或 "-bm 1.000000 文件名"
+            let file_path = if let Some(stripped) = tex_name.strip_prefix("-bm") {
+                let parts: Vec<&str> = stripped.trim().split_whitespace().collect();
+                if let Some(fname) = parts.last() {
+                    prefix.to_owned() + "/" + fname
+                } else {
+                    prefix.to_owned() + "/" + &tex_name
+                }
+            } else {
+                prefix.to_owned() + "/" + &tex_name
+            };
+            normals.push(Some(Arc::new(ImageTexture::new_raw_image(&file_path))));
         } else {
             normals.push(None);
         }

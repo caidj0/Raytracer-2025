@@ -75,14 +75,18 @@ impl Texture for CheckerTexture {
 #[derive(Debug)]
 pub struct ImageTexture {
     image: Image,
-    pub raw: bool,
 }
 
 impl ImageTexture {
     pub fn new(file_name: &str) -> ImageTexture {
         ImageTexture {
-            image: Image::new(file_name),
-            raw: false,
+            image: Image::new(file_name, false),
+        }
+    }
+
+    pub fn new_raw_image(file_name: &str) -> ImageTexture {
+        ImageTexture {
+            image: Image::new(file_name, true),
         }
     }
 

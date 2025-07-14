@@ -9,18 +9,23 @@ use palette::Srgba;
 #[derive(Debug)]
 pub struct Image {
     img: Option<(Rgba32FImage, ImageFormat)>,
+    raw: bool,
 }
 
 impl Image {
-    pub const EMPTY: Image = Image { img: None };
+    pub const EMPTY: Image = Image {
+        img: None,
+        raw: false,
+    };
 
-    pub fn new(image_filename: &str) -> Image {
+    pub fn new(image_filename: &str, raw: bool) -> Image {
         if let Ok(specified_dir) = env::var("RTW_IMAGES") {
             let mut path = PathBuf::new();
             path.push(specified_dir);
             path.push(image_filename);
             return Image {
                 img: Image::load(path),
+                raw,
             };
         }
 
@@ -34,6 +39,7 @@ impl Image {
 
         Image {
             img: Image::load(path),
+            raw,
         }
     }
 
@@ -59,16 +65,19 @@ impl Image {
             return [1.0, 0.0, 1.0, 1.0];
         };
 
-        let x = x.clamp(0, self.width() - 1);
-        let y = y.clamp(0, self.height() - 1);
+        let x = x % self.width();
+        let y = y % self.height();
+
+        let raw_pixel = img.get_pixel(x, y).0;
+        if self.raw {
+            return raw_pixel;
+        }
 
         match fmt {
-            ImageFormat::Hdr => img.get_pixel(x, y).0,
-            ImageFormat::OpenExr => img.get_pixel(x, y).0,
-            ImageFormat::Avif => img.get_pixel(x, y).0,
-            _ => Srgba::from(self.img.as_ref().unwrap().0.get_pixel(x, y).0)
-                .into_linear()
-                .into(),
+            ImageFormat::Hdr => raw_pixel,
+            ImageFormat::OpenExr => raw_pixel,
+            ImageFormat::Avif => raw_pixel,
+            _ => Srgba::from(raw_pixel).into_linear().into(),
         }
     }
 }
