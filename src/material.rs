@@ -126,12 +126,13 @@ impl Material for Metal {
 }
 
 pub struct Dielectric {
+    attentuation: Arc<dyn Texture>,
     refraction_index: f64,
 }
 
 impl Dielectric {
-    pub fn new(refraction_index: f64) -> Dielectric {
-        Dielectric { refraction_index }
+    pub fn new(attentuation: Arc<dyn Texture>,  refraction_index: f64) -> Dielectric {
+        Dielectric { attentuation, refraction_index }
     }
 
     fn reflectance(cosine: f64, refraction_index: f64) -> f64 {
@@ -143,8 +144,6 @@ impl Dielectric {
 
 impl Material for Dielectric {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
-        let attenuation = Color::WHITE;
-
         let ri = if rec.front_face {
             1.0 / self.refraction_index
         } else {
@@ -166,7 +165,7 @@ impl Material for Dielectric {
         };
 
         Some(ScatterRecord {
-            attenuation,
+            attenuation: self.attentuation.value(rec.u, rec.v, &rec.p),
             scatter_type: ScatterType::Ray(Ray::new_with_time(rec.p, direction, *r_in.time())),
         })
     }
