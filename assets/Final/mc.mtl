@@ -1,0 +1,107 @@
+# Blender 4.3.2 MTL File: '初音未来.blend'
+# www.blender.org
+
+newmtl diamond_ore_all
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+Pr 0.700000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_Kd diamond_ore.png
+map_Ke 钻石矿_E.png
+
+newmtl diamond_pickaxe
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+Pr 0.000000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_Kd diamond_pickaxe.png
+map_d diamond_pickaxe.png
+
+newmtl flame.noimport.001
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 1
+Pr 0.700000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_d flame.png
+
+newmtl smoke_flame..001
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+Pr 0.500000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+
+newmtl stone_all
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 1
+Pr 0.700000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_Kd stone.png
+map_d stone.png
+
+newmtl torch.emit.001
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 1
+Pr 0.700000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_Kd torch.png
+map_Ke torch.png
+map_d torch.png
+
+newmtl torch.shaded.001
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 1
+Pr 0.700000
+Pm 0.000000
+Ps 0.000000
+Pc 0.000000
+Pcr 0.030000
+aniso 0.000000
+anisor 0.000000
+map_Kd torch.png
+map_d torch.png

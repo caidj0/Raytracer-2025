@@ -131,8 +131,11 @@ pub struct Dielectric {
 }
 
 impl Dielectric {
-    pub fn new(attentuation: Arc<dyn Texture>,  refraction_index: f64) -> Dielectric {
-        Dielectric { attentuation, refraction_index }
+    pub fn new(attentuation: Arc<dyn Texture>, refraction_index: f64) -> Dielectric {
+        Dielectric {
+            attentuation,
+            refraction_index,
+        }
     }
 
     fn reflectance(cosine: f64, refraction_index: f64) -> f64 {

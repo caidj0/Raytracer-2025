@@ -314,7 +314,7 @@ fn load_materials(
         }
 
         if let Some(emit) = material.unknown_param.get("map_Ke") {
-            let file_path = prefix.to_owned() + "/" + &emit;
+            let file_path = prefix.to_owned() + "/" + emit;
             let emit_tex = ImageTexture::new(&file_path);
             mat = Arc::new(DiffuseLight::new_with_material(Arc::new(emit_tex), mat));
         }
@@ -338,7 +338,7 @@ fn load_materials(
         if let Some(tex_name) = material.normal_texture {
             // 处理 tex_name 可能为 "文件名" 或 "-bm 1.000000 文件名"
             let file_path = if let Some(stripped) = tex_name.strip_prefix("-bm") {
-                let parts: Vec<&str> = stripped.trim().split_whitespace().collect();
+                let parts: Vec<&str> = stripped.split_whitespace().collect();
                 if let Some(fname) = parts.last() {
                     prefix.to_owned() + "/" + fname
                 } else {

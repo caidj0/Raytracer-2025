@@ -36,7 +36,7 @@ fn main() {
         5 => disney_scene(),
         _ => portal_scene(),
     };
-    let path_string = format!("output/{}/{}.png", "final", "image3");
+    let path_string = format!("output/{}/{}.png", "final", "final");
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -83,8 +83,7 @@ fn portal_scene() -> RgbImage {
     camera.defocus_angle_in_degrees = 0.0;
     camera.toon_map = ToonMap::ACES;
 
-    let mut back_tex = ImageTexture::new("rogland_clear_night_4k.exr");
-    back_tex.raw = true;
+    let back_tex = ImageTexture::new("rogland_clear_night_4k.exr");
     camera.background.texture = Arc::new(back_tex);
 
     camera.render(&world, None)
@@ -96,14 +95,14 @@ fn disney_scene() -> RgbImage {
     let disney = Arc::new(
         Disney::builder()
             .base_color(Color::WHITE)
-            .roughness(1.0)
+            .roughness(0.0)
             .anisotropic(0.0)
             .sheen(0.0)
             .sheen_tint(0.0)
             .clearcoat(0.0)
             .clearcoat_gloss(0.0)
             .specular_tint(0.0)
-            .metallic(0.0)
+            .metallic(1.0)
             .ior(1.5)
             .flatness(0.0)
             .spec_trans(0.0)
@@ -147,8 +146,7 @@ fn disney_scene() -> RgbImage {
     camera.defocus_angle_in_degrees = 0.0;
     camera.toon_map = ToonMap::ACES;
 
-    let mut back_tex = ImageTexture::new("rogland_clear_night_4k.exr");
-    back_tex.raw = true;
+    let back_tex = ImageTexture::new("rogland_clear_night_4k.exr");
     camera.background.texture = Arc::new(back_tex);
 
     camera.render(&world, None)
@@ -196,8 +194,7 @@ fn background_scene() -> RgbImage {
     camera.defocus_angle_in_degrees = 0.0;
     camera.toon_map = ToonMap::ACES;
 
-    let mut back_tex = ImageTexture::new("rogland_clear_night_4k.exr");
-    back_tex.raw = true;
+    let back_tex = ImageTexture::new("rogland_clear_night_4k.exr");
     camera.background.texture = Arc::new(back_tex);
 
     let img = camera.render(&world, Some(&light));
@@ -208,35 +205,176 @@ fn background_scene() -> RgbImage {
 }
 
 fn obj_scene() -> RgbImage {
-    let miku = Wavefont::new("初音未来.obj", "YYB初音未来").unwrap();
+    let miku = Wavefont::new("初音未来.obj", "Final", false).unwrap();
+    let ball = Wavefont::new("玻璃球.obj", "Final", false).unwrap();
+    let frame = Wavefont::new("外框.obj", "Final", false).unwrap();
+    let sound_box = Wavefont::new("声匣.obj", "Final", false).unwrap();
+    let mirror_door = Wavefont::new("镜子门.obj", "Final", false).unwrap();
+    let mirror = Wavefont::new("镜子.obj", "Final", true).unwrap();
+    let ring = Wavefont::new("环.obj", "Final", false).unwrap();
+    let portal_frame = Wavefont::new("传送门框.obj", "Final", false).unwrap();
+    let under_water = Wavefont::new("水下.obj", "Final", false).unwrap();
+    let water = Wavefont::new("水面.obj", "Final", true).unwrap();
+    let text = Wavefont::new("文字.obj", "Final", false).unwrap();
+    let mc = Wavefont::new("mc.obj", "Final", false).unwrap();
+    let umbralla = Wavefont::new("伞.obj", "Final", false).unwrap();
+    let checker = Wavefont::new("卒.obj", "Final", false).unwrap();
+
+    let forg = Wavefont::new("雾.obj", "Final", false).unwrap();
+    let forg = ConstantMedium::new_with_tex(
+        Box::new(forg),
+        0.05,
+        Arc::new(SolidColor::new(Color::new(1.0, 0.936, 0.381))),
+    );
+
+    let portal_material = Arc::new(Portal::new(
+        Color::WHITE,
+        Vec3::new(0.0, -6.3, 1.1),
+        Quaternion::identity(),
+    ));
+
+    let portal_anchor = Vec3::new(-5.8035, -0.9983, -7.7198);
+    let portal_u = Vec3::new(-3.8206, -0.9983, -8.3722) - portal_anchor;
+    let portal_v = Vec3::new(-5.8035, 3.1159, -7.7198) - portal_anchor;
+    let portal = Quad::new(portal_anchor, portal_u, portal_v, portal_material);
+
+    let translucent_material = Arc::new(
+        Disney::builder()
+            .diff_trans(1.0)
+            .roughness(1.0)
+            .thin(true)
+            .build(),
+    );
+    let translucent_board = Quad::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        Vec3::new(0.0, 0.0, 2.0),
+        Vec3::new(2.0, 0.0, 0.0),
+        translucent_material,
+    );
+    let translucent_board = Transform::new(
+        Box::new(translucent_board),
+        Some(Vec3::new(2.8145, -0.23603, -19.501)),
+        Some(Quaternion::from_axis_angle(
+            Vec3::new(0.993, -0.082, 0.082),
+            90.4,
+        )),
+        Some(Vec3::new(2.616, 1.0, 1.0)),
+    );
+
+    let light_material = Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(Color::new(
+        4.0, 4.0, 4.0,
+    )))));
+    let light_board = Quad::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        Vec3::new(0.0, 0.0, 2.0),
+        Vec3::new(2.0, 0.0, 0.0),
+        light_material,
+    );
+    let light_board = Transform::new(
+        Box::new(light_board),
+        Some(Vec3::new(-0.44579, 5.2955, 0.89889)),
+        Some(Quaternion::from_axis_angle(
+            Vec3::new(0.921, 0.021, 0.389),
+            34.7,
+        )),
+        Some(Vec3::new(3.415, 3.415, 3.415)),
+    );
+    let yellow_material = Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(
+        5.0 * Color::new(1.0, 0.687, 0.0),
+    ))));
+    let yellow_board = Quad::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        Vec3::new(0.0, 0.0, 2.0),
+        Vec3::new(2.0, 0.0, 0.0),
+        yellow_material,
+    );
+    let yellow_board = Transform::new(
+        Box::new(yellow_board),
+        Some(Vec3::new(-1.0053, -1.9655, -4.242)),
+        Some(Quaternion::from_axis_angle(
+            Vec3::new(0.766, 0.483, -0.423),
+            85.7,
+        )),
+        Some(Vec3::new(1.0, 1.0, 1.0) * 1.499),
+    );
+
+    let black_box = Transform::new(
+        Box::new(build_box(
+            Vec3::new(-1.0, -1.0, -1.0),
+            Vec3::new(1.0, 1.0, 1.0),
+            Arc::new(DiffuseLight::new(Arc::new(SolidColor::new(Color::BLACK)))),
+        )),
+        Some(Vec3::new(-4.9891, -6.4998, -8.3939)),
+        None,
+        Some(Vec3::new(1.0, 1.0, 1.0) * 6.244),
+    );
 
     let mut world = Hittables::default();
     world.add(Box::new(miku));
+    world.add(Box::new(light_board));
+    world.add(Box::new(ball));
+    world.add(Box::new(frame));
+    world.add(Box::new(sound_box));
+    world.add(Box::new(mirror_door));
+    world.add(Box::new(mirror));
+    world.add(Box::new(ring));
+    world.add(Box::new(portal_frame));
+    world.add(Box::new(under_water));
+    world.add(Box::new(water));
+    world.add(Box::new(text));
+    world.add(Box::new(translucent_board));
+    world.add(Box::new(mc));
+    world.add(Box::new(portal));
+    world.add(Box::new(umbralla));
+    world.add(Box::new(yellow_board));
+    world.add(Box::new(black_box));
+    world.add(Box::new(forg));
+    world.add(Box::new(checker));
 
-    let mut camera = Camera::from_json("YYB初音未来/camera.json").unwrap();
+    let mut camera = Camera::from_json("Final/camera.json").unwrap();
 
-    camera.samples_per_pixel = 100;
-    camera.max_depth = 10;
+    camera.samples_per_pixel = 5000;
+    camera.max_depth = 30;
 
-    let mut backtex = ImageTexture::new("04.hdr");
-    backtex.raw = true;
+    let backtex = ImageTexture::new("13.hdr");
     camera.background.texture = Arc::new(backtex);
 
-    let light = Box::new(Transform::new(
-        Box::new(Quad::new(
-            Vec3::new(-1.0, 0.0, -1.0),
-            Vec3::new(0.0, 0.0, 2.0),
-            Vec3::new(2.0, 0.0, 0.0),
-            Arc::new(EmptyMaterial),
-        )),
-        Some(Vec3::new(-0.28, 1.73, 0.50)),
+    let light_board = Quad::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        Vec3::new(0.0, 0.0, 2.0),
+        Vec3::new(2.0, 0.0, 0.0),
+        Arc::new(EmptyMaterial),
+    );
+    let light_board = Transform::new(
+        Box::new(light_board),
+        Some(Vec3::new(-0.44579, 5.2955, 0.89889)),
         Some(Quaternion::from_axis_angle(
-            Vec3::new(0.921, 0.021, -0.389),
+            Vec3::new(0.921, 0.021, 0.389),
             34.7,
         )),
-        None,
-    ));
-    let img = camera.render(&world, Some(light.as_ref()));
+        Some(Vec3::new(3.415, 3.415, 3.415)),
+    );
+    let yellow_board = Quad::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        Vec3::new(0.0, 0.0, 2.0),
+        Vec3::new(2.0, 0.0, 0.0),
+        Arc::new(EmptyMaterial),
+    );
+    let yellow_board = Transform::new(
+        Box::new(yellow_board),
+        Some(Vec3::new(-1.0053, -1.9655, -4.242)),
+        Some(Quaternion::from_axis_angle(
+            Vec3::new(0.766, 0.483, -0.423),
+            85.7,
+        )),
+        Some(Vec3::new(1.0, 1.0, 1.0) * 1.499),
+    );
+
+    let mut lights = Hittables::default();
+    lights.add(Box::new(light_board));
+    lights.add(Box::new(yellow_board));
+
+    let img = camera.render(&world, Some(&lights));
 
     drop(world);
 
@@ -298,7 +436,10 @@ fn final_scene(image_width: u32, samples_per_pixel: usize, max_depth: u32) -> Rg
         sphere_material,
     )));
 
-    let glass_material = Arc::new(Dielectric::new(1.5));
+    let glass_material = Arc::new(Dielectric::new(
+        Arc::new(SolidColor::new(Color::WHITE)),
+        1.5,
+    ));
     world.add(Box::new(Sphere::new(
         Point3::new(260.0, 150.0, 45.0),
         50.0,

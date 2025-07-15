@@ -115,8 +115,7 @@ impl ImageTexture {
         let i = (u * self.image.width() as f64) as u32;
         let j = (v * self.image.height() as f64) as u32;
 
-        let pixel = self.image.pixel_data(i, j);
-        pixel
+        self.image.pixel_data(i, j)
     }
 
     fn get_linear_interp_pixel(&self, u: f64, v: f64) -> [f32; 4] {

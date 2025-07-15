@@ -22,7 +22,7 @@ def get_camera_parameters():
         raise Exception("Only perspective cameras are supported.")
 
     sensor_height = cam_data.sensor_height if cam_data.sensor_fit != 'VERTICAL' else cam_data.sensor_width
-    vertical_fov = 2 * math.degrees(math.atan((sensor_height / 2) / cam_data.lens))
+    vertical_fov = math.degrees(cam_data.angle) / 2
 
     cam_world_matrix = camera.matrix_world
     look_from = cam_world_matrix.to_translation()
