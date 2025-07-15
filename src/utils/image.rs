@@ -65,8 +65,8 @@ impl Image {
             return [1.0, 0.0, 1.0, 1.0];
         };
 
-        let x = x % self.width();
-        let y = y % self.height();
+        let x = x.clamp(0, self.width() - 1);
+        let y = y.clamp(0, self.height() - 1);
 
         let raw_pixel = img.get_pixel(x, y).0;
         if self.raw {

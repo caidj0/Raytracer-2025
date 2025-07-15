@@ -112,8 +112,8 @@ impl Texture for ImageTexture {
             return Color::new(0.0, 1.0, 1.0);
         }
 
-        let u = u.clamp(0.0, 1.0);
-        let v = 1.0 - v.clamp(0.0, 1.0);
+        let u = u - u.floor();
+        let v = 1.0 - (v - v.floor());
 
         let i = (u * self.image.width() as f64) as u32;
         let j = (v * self.image.height() as f64) as u32;
