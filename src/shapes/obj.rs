@@ -9,7 +9,7 @@ use crate::{
     hit::{HitRecord, Hittable},
     hits::Hittables,
     material::{
-        DiffuseLight, EmptyMaterial, Material, Mix, Transparent,
+        Dielectric, DiffuseLight, EmptyMaterial, Material, Metal, Mix, Transparent,
         disney::{Disney, DisneyParameters},
     },
     shapes::triangle::Triangle,
@@ -124,14 +124,14 @@ impl Wavefont {
         Vec3::from([v[index], v[index + 1], 0.0])
     }
 
-    pub fn new(file_name: &str, prefix: &str) -> Option<Wavefont> {
+    pub fn new(file_name: &str, prefix: &str, vanilla_material: bool) -> Option<Wavefont> {
         let file_path = prefix.to_owned() + "/" + file_name;
         let (objects, materials) = Self::load(&file_path).ok()?;
 
         let mut mats: Vec<Arc<dyn Material>> = vec![];
         let mut normals: Vec<Option<Arc<ImageTexture>>> = vec![];
         if let Ok(materials) = materials {
-            load_materials(&mut mats, &mut normals, materials, prefix);
+            load_materials(&mut mats, &mut normals, materials, prefix, vanilla_material);
         }
 
         let mut obs = Hittables::default();
@@ -224,6 +224,7 @@ fn load_materials(
     normals: &mut Vec<Option<Arc<ImageTexture>>>,
     materials: Vec<tobj::Material>,
     prefix: &str,
+    vanilla_material: bool,
 ) {
     let transparent_mat = Arc::new(Transparent);
 
@@ -277,20 +278,29 @@ fn load_materials(
             0.0
         };
 
-        let mut mat: Arc<dyn Material> = Arc::new(Disney {
-            param_fn: Box::new(move |u, v, p| DisneyParameters {
-                base_color: base_color.value(u, v, p),
+        let mut mat: Arc<dyn Material> = if vanilla_material && metallic == 1.0 {
+            Arc::new(Metal::new(
+                base_color.value(0.0, 0.0, &Vec3::ZERO),
                 roughness,
-                anisotropic,
-                sheen,
-                clearcoat,
-                clearcoat_gloss,
-                metallic,
-                ior,
-                spec_trans,
-                ..Default::default()
-            }),
-        });
+            ))
+        } else if vanilla_material && spec_trans == 1.0 {
+            Arc::new(Dielectric::new(base_color, ior))
+        } else {
+            Arc::new(Disney {
+                param_fn: Box::new(move |u, v, p| DisneyParameters {
+                    base_color: base_color.value(u, v, p),
+                    roughness,
+                    anisotropic,
+                    sheen,
+                    clearcoat,
+                    clearcoat_gloss,
+                    metallic,
+                    ior,
+                    spec_trans,
+                    ..Default::default()
+                }),
+            })
+        };
 
         if let Some(emit) = material.unknown_param.get("Ke") {
             let emit_vals: Vec<f64> = emit
@@ -301,6 +311,12 @@ fn load_materials(
                 let color = SolidColor::from([emit_vals[0], emit_vals[1], emit_vals[2]]);
                 mat = Arc::new(DiffuseLight::new_with_material(Arc::new(color), mat));
             }
+        }
+
+        if let Some(emit) = material.unknown_param.get("map_Ke") {
+            let file_path = prefix.to_owned() + "/" + &emit;
+            let emit_tex = ImageTexture::new(&file_path);
+            mat = Arc::new(DiffuseLight::new_with_material(Arc::new(emit_tex), mat));
         }
 
         if let Some(dissolve_tex) = material.dissolve_texture {
