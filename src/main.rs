@@ -333,7 +333,7 @@ fn obj_scene() -> RgbImage {
 
     let mut camera = Camera::from_json("Final/camera.json").unwrap();
 
-    camera.samples_per_pixel = 5000;
+    camera.samples_per_pixel = 3000;
     camera.max_depth = 30;
 
     let backtex = ImageTexture::new("13.hdr");
