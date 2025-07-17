@@ -1,11 +1,11 @@
 use std::{
     fmt::Display,
-    ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub},
+    ops::{AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg},
 };
 
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 pub struct Vec3 {
-    pub e: [f64; 3],
+    e: [f64; 3],
 }
 
 pub type Point3 = Vec3;
@@ -23,6 +23,10 @@ impl Vec3 {
     }
     pub fn z(&self) -> f64 {
         self.e[2]
+    }
+
+    pub fn e(&self) -> [f64; 3] {
+        self.e
     }
 
     pub fn length_squared(&self) -> f64 {
@@ -50,35 +54,35 @@ impl Vec3 {
     }
 }
 
-impl Add for Vec3 {
-    type Output = Vec3;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Vec3::new(self[0] + rhs[0], self[1] + rhs[1], self[2] + rhs[2])
-    }
-}
-
-impl Sub for Vec3 {
-    type Output = Vec3;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Vec3::new(self[0] - rhs[0], self[1] - rhs[1], self[2] - rhs[2])
-    }
-}
-
-impl Mul for Vec3 {
-    type Output = Vec3;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        Vec3::new(self[0] * rhs[0], self[1] * rhs[1], self[2] * rhs[2])
-    }
-}
-
 impl Mul<Vec3> for f64 {
     type Output = Vec3;
 
     fn mul(self, rhs: Vec3) -> Self::Output {
         Vec3::new(self * rhs[0], self * rhs[1], self * rhs[2])
+    }
+}
+
+impl Mul<&Vec3> for f64 {
+    type Output = Vec3;
+
+    fn mul(self, rhs: &Vec3) -> Self::Output {
+        Vec3::new(self * rhs[0], self * rhs[1], self * rhs[2])
+    }
+}
+
+impl Mul<f64> for Vec3 {
+    type Output = Vec3;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Vec3::new(self[0] * rhs, self[1] * rhs, self[2] * rhs)
+    }
+}
+
+impl Mul<f64> for &Vec3 {
+    type Output = Vec3;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Vec3::new(self[0] * rhs, self[1] * rhs, self[2] * rhs)
     }
 }
 
@@ -112,11 +116,11 @@ impl Neg for Vec3 {
     }
 }
 
-impl Mul<f64> for Vec3 {
+impl Neg for &Vec3 {
     type Output = Vec3;
 
-    fn mul(self, rhs: f64) -> Self::Output {
-        Vec3::new(self[0] * rhs, self[1] * rhs, self[2] * rhs)
+    fn neg(self) -> Self::Output {
+        Vec3::new(-self[0], -self[1], -self[2])
     }
 }
 
@@ -142,11 +146,59 @@ impl Div<f64> for Vec3 {
     }
 }
 
+impl Div<f64> for &Vec3 {
+    type Output = Vec3;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        1.0 / rhs * self
+    }
+}
+
 impl Display for Vec3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {} {}", self[0], self[1], self[2])
     }
 }
+
+macro_rules! impl_op {
+    ($trait:ident, $func:ident, $op:tt) => {
+        impl std::ops::$trait<Vec3> for Vec3 {
+            type Output = Vec3;
+
+            fn $func(self, rhs: Vec3) -> Vec3 {
+                Vec3::new(self[0] $op rhs[0], self[1] $op rhs[1], self[2] $op rhs[2])
+            }
+        }
+
+        impl std::ops::$trait<Vec3> for &Vec3 {
+            type Output = Vec3;
+
+            fn $func(self, rhs: Vec3) -> Vec3 {
+                Vec3::new(self[0] $op rhs[0], self[1] $op rhs[1], self[2] $op rhs[2])
+            }
+        }
+
+        impl std::ops::$trait<&Vec3> for Vec3 {
+            type Output = Vec3;
+
+            fn $func(self, rhs: &Vec3) -> Vec3 {
+                Vec3::new(self[0] $op rhs[0], self[1] $op rhs[1], self[2] $op rhs[2])
+            }
+        }
+
+        impl std::ops::$trait<&Vec3> for &Vec3 {
+            type Output = Vec3;
+
+            fn $func(self, rhs: &Vec3) -> Vec3 {
+                Vec3::new(self[0] $op rhs[0], self[1] $op rhs[1], self[2] $op rhs[2])
+            }
+        }
+    };
+}
+
+impl_op!(Add, add, +);
+impl_op!(Sub, sub, -);
+impl_op!(Mul, mul, *);
 
 #[cfg(test)]
 mod tests {

@@ -1,10 +1,15 @@
 use console::style;
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
-use raytracer::utils::{
-    color::Color,
-    ray::Ray,
-    vec3::{Point3, Vec3},
+use raytracer::{
+    hit::Hittable,
+    hits::Hittables,
+    shapes::sphere::Sphere,
+    utils::{
+        color::Color,
+        ray::Ray,
+        vec3::{Point3, Vec3},
+    },
 };
 
 fn hit_sphere(center: &Point3, radius: f64, r: &Ray) -> bool {
@@ -16,9 +21,9 @@ fn hit_sphere(center: &Point3, radius: f64, r: &Ray) -> bool {
     discriminant >= 0.0
 }
 
-fn ray_color(r: &Ray) -> Color {
-    if hit_sphere(&Point3::new(0.0, 0.0, -1.0), 0.5, r) {
-        return Color::new(1.0, 0.0, 0.0);
+fn ray_color(r: &Ray, world: &dyn Hittable) -> Color {
+    if let Some(t) = world.hit(r, 0.0, 1000.0) {
+        return 0.5 * (t.normal + Vec3::new(1.0, 1.0, 1.0));
     }
 
     let unit_vec = r.direction().unit_vector();
@@ -28,7 +33,7 @@ fn ray_color(r: &Ray) -> Color {
 }
 
 fn main() {
-    let path = std::path::Path::new("output/book1/image3.png");
+    let path = std::path::Path::new("output/book1/image5.png");
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
 
@@ -37,6 +42,10 @@ fn main() {
 
     let image_height = (image_width as f64 / aspect_ratio) as u32;
     let image_height = if image_height < 1 { 1 } else { image_height };
+
+    let mut world: Hittables = Default::default();
+    world.add(Box::new(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5)));
+    world.add(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0)));
 
     let focal_length: f64 = 1.0;
     let viewport_height: f64 = 2.0;
@@ -67,7 +76,7 @@ fn main() {
             let ray_direction = pixel_center - camera_center;
             let r = Ray::new(camera_center, ray_direction);
 
-            let pixel_color = ray_color(&r);
+            let pixel_color = ray_color(&r, &world);
             let pixel = img.get_pixel_mut(i, j);
             *pixel = image::Rgb(pixel_color.to_rgb());
         }
