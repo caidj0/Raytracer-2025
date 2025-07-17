@@ -8,3 +8,6 @@ image = "0.25.6"
 console = "0.15.11"
 indicatif = "0.17.11"
 rand = "0.9.1"
+
+[profile.dev]
+opt-level = 1
