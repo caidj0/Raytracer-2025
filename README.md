@@ -2,6 +2,8 @@
 
 # Summer-Ray-Tracer
 
+[我实现的 bonus](doc/completed-bonus.md)
+
 > SJTU ACM Honors Class 2025 Ray Tracer Project with Rust!
 
 **Before you start, please read this README carefully**, and there is no useless information in this document.
