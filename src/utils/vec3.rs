@@ -1,5 +1,6 @@
 use std::{
     fmt::Display,
+    iter::Sum,
     ops::{AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg},
 };
 
@@ -199,6 +200,12 @@ macro_rules! impl_op {
 impl_op!(Add, add, +);
 impl_op!(Sub, sub, -);
 impl_op!(Mul, mul, *);
+
+impl Sum for Vec3 {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Vec3::new(0.0, 0.0, 0.0), |a, b| a + b)
+    }
+}
 
 #[cfg(test)]
 mod tests {
