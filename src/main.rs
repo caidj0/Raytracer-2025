@@ -24,7 +24,7 @@ fn ray_color(r: &Ray, world: &dyn Hittable) -> Color {
 }
 
 fn main() {
-    let path = std::path::Path::new("output/book1/image5.png");
+    let path = std::path::Path::new("output/book1/image4.png");
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
 
@@ -36,7 +36,7 @@ fn main() {
 
     let mut world: Hittables = Default::default();
     world.add(Box::new(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5)));
-    world.add(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0)));
+    // world.add(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0)));
 
     let focal_length: f64 = 1.0;
     let viewport_height: f64 = 2.0;
