@@ -2,7 +2,7 @@ use console::style;
 use raytracer::{camera::Camera, hits::Hittables, shapes::sphere::Sphere, utils::vec3::Point3};
 
 fn main() {
-    let path_string = format!("output/book1/image3.png");
+    let path_string = "output/book1/image12.png".to_string();
     let path = std::path::Path::new(&path_string);
     let prefix = path.parent().unwrap();
     std::fs::create_dir_all(prefix).expect("Cannot create all the parents");
@@ -16,7 +16,7 @@ fn main() {
 
     let mut world: Hittables = Default::default();
     world.add(Box::new(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5)));
-    // world.add(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0)));
+    world.add(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0)));
 
     let img = camera.render(&world);
 
