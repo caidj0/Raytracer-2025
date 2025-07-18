@@ -21,8 +21,10 @@ def get_camera_parameters():
     if cam_data.type != 'PERSP':
         raise Exception("Only perspective cameras are supported.")
 
-    sensor_height = cam_data.sensor_height if cam_data.sensor_fit != 'VERTICAL' else cam_data.sensor_width
-    vertical_fov = math.degrees(cam_data.angle) / 2
+    sensor_fit = cam_data.sensor_fit
+    cam_data.sensor_fit = 'VERTICAL'
+    vertical_fov = math.degrees(cam_data.angle)
+    cam_data.sensor_fit = sensor_fit
 
     cam_world_matrix = camera.matrix_world
     look_from = cam_world_matrix.to_translation()
