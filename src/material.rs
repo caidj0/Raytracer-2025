@@ -15,14 +15,9 @@ use crate::{
     },
 };
 
-pub enum ScatterType<'a> {
+pub enum ScatterRecord<'a> {
     PDF(Box<dyn PDF + 'a>),
-    Ray(Ray),
-}
-
-pub struct ScatterRecord<'a> {
-    pub attenuation: Color, // 仅对 Ray 类型有效
-    pub scatter_type: ScatterType<'a>,
+    Ray((Color, Ray)),
 }
 
 pub trait Material: Send + Sync {
@@ -53,10 +48,7 @@ impl Material for EmptyMaterial {
         let albedo = Color::new(0.75, 0.75, 0.75);
         let pdf_ptr = Box::new(CosinePDF::new(albedo, &rec.normal));
 
-        Some(ScatterRecord {
-            attenuation: Color::WHITE, // This value is not used, the real attenuation is calculated in the PDF value
-            scatter_type: ScatterType::PDF(pdf_ptr),
-        })
+        Some(ScatterRecord::PDF(pdf_ptr))
     }
 
     fn scattering_pdf(&self, _r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
@@ -82,10 +74,7 @@ impl Material for Lambertian {
         let albedo = self.texture.value(rec.u, rec.v, &rec.p);
         let pdf_ptr = Box::new(CosinePDF::new(albedo, &rec.normal));
 
-        Some(ScatterRecord {
-            attenuation: Color::WHITE, // This value is not used, the real attenuation is calculated in the PDF value
-            scatter_type: ScatterType::PDF(pdf_ptr),
-        })
+        Some(ScatterRecord::PDF(pdf_ptr))
     }
 
     fn scattering_pdf(&self, _r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
@@ -118,10 +107,10 @@ impl Material for Metal {
 
         let attenuation = self.albedo;
 
-        Some(ScatterRecord {
+        Some(ScatterRecord::Ray((
             attenuation,
-            scatter_type: ScatterType::Ray(Ray::new_with_time(rec.p, reflected, *r_in.time())),
-        })
+            Ray::new_with_time(rec.p, reflected, *r_in.time()),
+        )))
     }
 }
 
@@ -167,10 +156,10 @@ impl Material for Dielectric {
                 .into_inner()
         };
 
-        Some(ScatterRecord {
-            attenuation: self.attentuation.value(rec.u, rec.v, &rec.p),
-            scatter_type: ScatterType::Ray(Ray::new_with_time(rec.p, direction, *r_in.time())),
-        })
+        Some(ScatterRecord::Ray((
+            self.attentuation.value(rec.u, rec.v, &rec.p),
+            Ray::new_with_time(rec.p, direction, *r_in.time()),
+        )))
     }
 }
 
@@ -240,10 +229,7 @@ impl Material for Isotropic {
             attenuation: albedo,
         });
 
-        Some(ScatterRecord {
-            attenuation: Color::WHITE, // This value is not used, the real attenuation is calculated in the PDF value
-            scatter_type: ScatterType::PDF(pdf_ptr),
-        })
+        Some(ScatterRecord::PDF(pdf_ptr))
     }
 
     fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> f64 {
@@ -255,14 +241,10 @@ pub struct Transparent;
 
 impl Material for Transparent {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
-        Some(ScatterRecord {
-            attenuation: Color::WHITE,
-            scatter_type: ScatterType::Ray(Ray::new_with_time(
-                rec.p,
-                *r_in.direction(),
-                *r_in.time(),
-            )),
-        })
+        Some(ScatterRecord::Ray((
+            Color::WHITE,
+            Ray::new_with_time(rec.p, *r_in.direction(), *r_in.time()),
+        )))
     }
 }
 

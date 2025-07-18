@@ -26,9 +26,6 @@ impl Portal {
 
 impl Material for Portal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<super::ScatterRecord> {
-        Some(ScatterRecord {
-            attenuation: self.attenuation,
-            scatter_type: super::ScatterType::Ray((self.f)(r_in, rec)),
-        })
+        Some(ScatterRecord::Ray((self.attenuation, (self.f)(r_in, rec))))
     }
 }

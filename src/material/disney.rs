@@ -1,7 +1,7 @@
 use std::f64::consts::PI;
 
 use crate::{
-    material::{Material, ScatterRecord, ScatterType},
+    material::{Material, ScatterRecord},
     pdf::PDF,
     utils::{
         color::Color,
@@ -84,10 +84,7 @@ impl Material for Disney {
             (self.param_fn)(rec.u, rec.v, &rec.p),
         ));
 
-        Some(ScatterRecord {
-            attenuation: Color::new(10000.0, 10000.0, 10000.0), // This value is not used, the real attenuation is calculated in the PDF value
-            scatter_type: ScatterType::PDF(disney_pdf),
-        })
+        Some(ScatterRecord::PDF(disney_pdf))
     }
 
     fn scattering_pdf(

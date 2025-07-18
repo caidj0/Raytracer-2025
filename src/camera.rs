@@ -16,7 +16,7 @@ use serde::Deserialize;
 
 use crate::{
     hit::Hittable,
-    material::ScatterType,
+    material::ScatterRecord,
     pdf::{HittablePDF, MixturePDF, PDF},
     shapes::environment::Environment,
     texture::SolidColor,
@@ -293,8 +293,8 @@ impl Camera {
             return color_from_emission;
         };
 
-        let color_from_scatter = match scatter_record.scatter_type {
-            ScatterType::PDF(pdf_ptr) => {
+        let color_from_scatter = match scatter_record {
+            ScatterRecord::PDF(pdf_ptr) => {
                 let light_ptr =
                     lights.map(|lights_hit| Box::new(HittablePDF::new(lights_hit, rec.p)));
                 let mixed_pdf: Box<dyn PDF> = if let Some(ref light) = light_ptr {
@@ -305,17 +305,17 @@ impl Camera {
 
                 if let Some(generate_vec) = mixed_pdf.generate() {
                     let scattered = Ray::new_with_time(rec.p, generate_vec.into_inner(), *r.time());
-                    let (attentuation, pdf_value) = mixed_pdf.value(scattered.direction());
+                    let (albedo_x_pscatter, pdf_value) = mixed_pdf.value(scattered.direction());
                     assert_ne!(pdf_value, 0.0);
 
                     let sample_color = self.ray_color(&scattered, depth - 1, world, lights);
-                    (attentuation * sample_color) / pdf_value
+                    (albedo_x_pscatter * sample_color) / pdf_value
                 } else {
                     Color::BLACK
                 }
             }
-            ScatterType::Ray(skip_pdf_ray) => {
-                scatter_record.attenuation * self.ray_color(&skip_pdf_ray, depth - 1, world, lights)
+            ScatterRecord::Ray((attenuation, skip_pdf_ray)) => {
+                attenuation * self.ray_color(&skip_pdf_ray, depth - 1, world, lights)
             }
         };
 
