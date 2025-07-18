@@ -116,7 +116,8 @@ impl Hittable for Transform {
 
     fn pdf_value(&self, origin: &Point3, direction: &Vec3) -> f64 {
         let local_origin = self.detransform(*origin);
-        let local_direction = self.quaternion.conjugate().rotate_vector(*direction);
+        let local_to = self.detransform(origin + direction);
+        let local_direction = local_to - local_origin;
 
         self.object.pdf_value(&local_origin, &local_direction)
     }
@@ -124,7 +125,9 @@ impl Hittable for Transform {
     fn random(&self, origin: &Point3) -> UnitVec3 {
         let local_origin = self.detransform(*origin);
         let local_dir = self.object.random(&local_origin);
-        let world_dir = self.quaternion.rotate_vector(local_dir.into_inner());
+        let local_to = local_origin + local_dir.as_inner();
+        let world_to = self.transform(local_to);
+        let world_dir = world_to - origin;
         UnitVec3::from_vec3(world_dir).expect("Random direction can't be normalized!")
     }
 }
