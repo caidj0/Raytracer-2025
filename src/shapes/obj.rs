@@ -78,16 +78,6 @@ impl Material for RemappedMaterial {
     ) -> crate::utils::color::Color {
         self.material.emitted(r_in, &self.remap_record(rec))
     }
-
-    fn scattering_pdf(
-        &self,
-        r_in: &crate::utils::ray::Ray,
-        rec: &crate::hit::HitRecord,
-        scattered: &crate::utils::ray::Ray,
-    ) -> f64 {
-        self.material
-            .scattering_pdf(r_in, &self.remap_record(rec), scattered)
-    }
 }
 
 pub struct Wavefont {

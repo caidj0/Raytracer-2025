@@ -86,25 +86,6 @@ impl Material for Disney {
 
         Some(ScatterRecord::PDF(disney_pdf))
     }
-
-    fn scattering_pdf(
-        &self,
-        r_in: &crate::utils::ray::Ray,
-        rec: &crate::hit::HitRecord,
-        scattered: &crate::utils::ray::Ray,
-    ) -> f64 {
-        let v_out = UnitVec3::from_vec3(-r_in.direction()).unwrap();
-        let disney_pdf = DisneyPDF::new(
-            self,
-            &rec.normal,
-            &v_out,
-            rec.front_face,
-            (self.param_fn)(rec.u, rec.v, &rec.p),
-        );
-
-        let (_, pdf) = disney_pdf.value(scattered.direction());
-        pdf
-    }
 }
 
 impl Disney {

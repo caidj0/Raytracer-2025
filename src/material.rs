@@ -1,7 +1,7 @@
 pub mod disney;
 pub mod portal;
 
-use std::{f64::consts::PI, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     hit::HitRecord,
@@ -31,12 +31,6 @@ pub trait Material: Send + Sync {
     fn emitted(&self, r_in: &Ray, rec: &HitRecord) -> Color {
         Color::BLACK
     }
-
-    #[allow(unused_variables)]
-    fn scattering_pdf(&self, r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
-        // unimplemented!("If using pdf, this function should be overloaded!")
-        0.0
-    }
 }
 
 pub struct EmptyMaterial;
@@ -49,13 +43,6 @@ impl Material for EmptyMaterial {
         let pdf_ptr = Box::new(CosinePDF::new(albedo, &rec.normal));
 
         Some(ScatterRecord::PDF(pdf_ptr))
-    }
-
-    fn scattering_pdf(&self, _r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
-        let cos_theta = rec
-            .normal
-            .dot(&UnitVec3::from_vec3(*scattered.direction()).unwrap());
-        if cos_theta < 0.0 { 0.0 } else { cos_theta / PI }
     }
 }
 
@@ -75,13 +62,6 @@ impl Material for Lambertian {
         let pdf_ptr = Box::new(CosinePDF::new(albedo, &rec.normal));
 
         Some(ScatterRecord::PDF(pdf_ptr))
-    }
-
-    fn scattering_pdf(&self, _r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
-        let cos_theta = rec
-            .normal
-            .dot(&UnitVec3::from_vec3(*scattered.direction()).unwrap());
-        if cos_theta < 0.0 { 0.0 } else { cos_theta / PI }
     }
 }
 
@@ -203,13 +183,6 @@ impl Material for DiffuseLight {
             None => None,
         }
     }
-
-    fn scattering_pdf(&self, r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
-        match &self.material {
-            Some(material) => material.scattering_pdf(r_in, rec, scattered),
-            None => 0.0,
-        }
-    }
 }
 
 pub struct Isotropic {
@@ -230,10 +203,6 @@ impl Material for Isotropic {
         });
 
         Some(ScatterRecord::PDF(pdf_ptr))
-    }
-
-    fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> f64 {
-        1.0 / (4.0 * PI)
     }
 }
 
@@ -295,11 +264,5 @@ impl Material for Mix {
     fn emitted(&self, r_in: &Ray, rec: &HitRecord) -> Color {
         let ratio = self.get_ratio(rec.u, rec.v, &rec.p);
         self.mat1.emitted(r_in, rec) * (1.0 - ratio) + self.mat2.emitted(r_in, rec) * ratio
-    }
-
-    fn scattering_pdf(&self, r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f64 {
-        let ratio = self.get_ratio(rec.u, rec.v, &rec.p);
-        self.mat1.scattering_pdf(r_in, rec, scattered) * (1.0 - ratio)
-            + self.mat2.scattering_pdf(r_in, rec, scattered) * ratio
     }
 }
